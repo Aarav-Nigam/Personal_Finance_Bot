@@ -1,0 +1,35 @@
+# Claude
+CLAUDE.md
+
+# Environment
+.env
+.env.local
+
+# Cache
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Watchlist (user-specific local state)
+watchlist.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
