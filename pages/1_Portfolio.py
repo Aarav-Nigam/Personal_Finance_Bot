@@ -1,0 +1,188 @@
+from __future__ import annotations
+
+import streamlit as st
+
+from analytics.portfolio import (
+    compare_to_nifty,
+    compute_pnl,
+    compute_xirr,
+    get_allocation,
+    get_portfolio_summary,
+    get_sector_allocation,
+    load_orders,
+)
+from ui.charts import pnl_bar, themed_pie
+from ui.styles import inject_css, metric_card, section_header
+from utils.formatters import fmt_inr, fmt_pct
+
+inject_css()
+
+section_header("Portfolio Overview", icon="briefcase")
+
+holdings_df = st.session_state.get("holdings_df")
+
+if holdings_df is None or holdings_df.empty:
+    st.info("No holdings loaded. Connect Kite or upload a CSV from the sidebar on the Home page.")
+    st.stop()
+
+df = compute_pnl(holdings_df)
+summary = get_portfolio_summary(holdings_df)
+
+# ---------------------------------------------------------------------------
+# Metric cards
+# ---------------------------------------------------------------------------
+c1, c2, c3, c4, c5 = st.columns(5)
+with c1:
+    metric_card("Total Invested", fmt_inr(summary["total_invested"]), icon="money_bag")
+with c2:
+    metric_card(
+        "Current Value",
+        fmt_inr(summary["total_current_value"]),
+        delta_value=summary["total_pnl"],
+    )
+with c3:
+    metric_card(
+        "Total P&L",
+        fmt_inr(summary["total_pnl"]),
+        delta=fmt_pct(summary["total_pnl_pct"]),
+        delta_value=summary["total_pnl"],
+    )
+with c4:
+    metric_card("Holdings", str(summary["num_holdings"]), icon="bar_chart")
+with c5:
+    xirr_val = None
+    try:
+        orders = load_orders()
+        xirr_val = compute_xirr(orders, summary["total_current_value"])
+    except Exception:
+        pass
+    metric_card(
+        "XIRR",
+        fmt_pct(xirr_val) if xirr_val is not None else "N/A",
+        icon="target",
+    )
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Nifty comparison
+# ---------------------------------------------------------------------------
+if xirr_val is not None:
+    try:
+        import pandas as pd
+
+        orders_df = load_orders()
+        earliest = pd.to_datetime(orders_df["order_timestamp"]).min().date()
+        comparison = compare_to_nifty(xirr_val, earliest)
+        if comparison:
+            section_header("Performance vs Nifty 50", icon="chart_increasing")
+            nc1, nc2, nc3 = st.columns(3)
+            with nc1:
+                metric_card(
+                    "Your XIRR",
+                    fmt_pct(comparison["portfolio_xirr"]),
+                    delta_value=comparison["portfolio_xirr"],
+                )
+            with nc2:
+                metric_card("Nifty CAGR", fmt_pct(comparison["nifty_cagr"]))
+            with nc3:
+                alpha = comparison["alpha"]
+                metric_card(
+                    "Alpha",
+                    fmt_pct(alpha),
+                    delta=("Outperforming" if alpha > 0 else "Underperforming"),
+                    delta_value=alpha,
+                )
+            st.divider()
+    except Exception:
+        pass
+
+# ---------------------------------------------------------------------------
+# Holdings table
+# ---------------------------------------------------------------------------
+section_header("Holdings", icon="clipboard")
+
+display_cols = ["tradingsymbol", "quantity", "average_price", "last_price"]
+display_df = df[display_cols].copy()
+display_df["invested"] = df["invested_value"]
+display_df["current_value"] = df["current_value"]
+display_df["pnl"] = df["pnl"]
+display_df["pnl_pct"] = df["pnl_pct"]
+
+if "day_change" in df.columns:
+    display_df["day_change"] = df["day_change"]
+if "day_change_percentage" in df.columns:
+    display_df["day_chg_pct"] = df["day_change_percentage"]
+
+col_config = {
+    "tradingsymbol": st.column_config.TextColumn("Symbol"),
+    "quantity": st.column_config.NumberColumn("Qty", format="%d"),
+    "average_price": st.column_config.NumberColumn("Avg Cost", format="%.2f"),
+    "last_price": st.column_config.NumberColumn("LTP", format="%.2f"),
+    "invested": st.column_config.NumberColumn("Invested", format="%.0f"),
+    "current_value": st.column_config.NumberColumn("Current", format="%.0f"),
+    "pnl": st.column_config.NumberColumn("P&L", format="%.0f"),
+    "pnl_pct": st.column_config.NumberColumn("P&L %", format="%.2f%%"),
+}
+if "day_change" in display_df.columns:
+    col_config["day_change"] = st.column_config.NumberColumn("Day Chg", format="%.2f")
+if "day_chg_pct" in display_df.columns:
+    col_config["day_chg_pct"] = st.column_config.NumberColumn("Day %", format="%.2f%%")
+
+st.dataframe(display_df, column_config=col_config, use_container_width=True, hide_index=True)
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Allocation charts
+# ---------------------------------------------------------------------------
+section_header("Allocation", icon="pie_chart")
+left, right = st.columns(2)
+
+with left:
+    allocation = get_allocation(holdings_df)
+    inst_alloc = allocation.get("instrument_type", {})
+    if inst_alloc:
+        fig = themed_pie(list(inst_alloc.keys()), list(inst_alloc.values()), "By Instrument Type")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Instrument type data not available.")
+
+with right:
+    with st.spinner("Loading sector data..."):
+        sector_alloc = get_sector_allocation(holdings_df)
+    if sector_alloc:
+        fig = themed_pie(list(sector_alloc.keys()), list(sector_alloc.values()), "By Sector")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Sector data not available.")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# Top gainers / losers
+# ---------------------------------------------------------------------------
+section_header("Top Movers", icon="fire")
+g_col, l_col = st.columns(2)
+
+with g_col:
+    gainers = summary["top_gainers"]
+    if not gainers.empty:
+        fig_g = pnl_bar(
+            gainers["tradingsymbol"].tolist(),
+            (gainers["pnl_pct"] * 100).tolist(),
+            "Top 5 Gainers (%)",
+        )
+        fig_g.update_layout(yaxis_ticksuffix="%")
+        st.plotly_chart(fig_g, use_container_width=True)
+
+with l_col:
+    losers = summary["top_losers"]
+    if not losers.empty:
+        fig_l = pnl_bar(
+            losers["tradingsymbol"].tolist(),
+            (losers["pnl_pct"] * 100).tolist(),
+            "Top 5 Losers (%)",
+        )
+        fig_l.update_layout(yaxis_ticksuffix="%")
+        st.plotly_chart(fig_l, use_container_width=True)

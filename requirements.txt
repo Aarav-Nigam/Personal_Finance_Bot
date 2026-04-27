@@ -1,0 +1,14 @@
+streamlit>=1.32
+plotly>=5.18
+kiteconnect>=5.0
+yfinance>=0.2.36
+pandas>=2.1
+numpy>=1.26
+pandas-ta>=0.3.14b
+pyxirr>=0.10
+litellm>=1.30
+transformers>=4.38
+torch>=2.2
+python-dotenv>=1.0
+requests>=2.31
+ruff>=0.3

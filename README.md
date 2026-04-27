@@ -1,6 +1,6 @@
 # PersonalFinanceBot
 
-> An open-source, free, AI-powered portfolio management tool for Indian stocks and mutual funds — built with Streamlit, Zerodha Kite Connect, and local/free LLMs.
+> A free, open-source, AI-powered portfolio dashboard for Indian investors — built with Streamlit, Zerodha Kite Connect, and free LLMs.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
@@ -9,160 +9,90 @@
 
 ---
 
-## Overview
+## What Is This?
 
-PersonalFinanceBot connects to your Zerodha portfolio via the Kite Connect API (or a CSV export), enriches that data with live market prices and technical/fundamental indicators, and surfaces everything through a clean multi-page Streamlit dashboard. An AI Advisor tab lets you chat with your portfolio using Google Gemini, Groq (Llama), or a completely offline Ollama model — no paid subscriptions required.
+PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV export), pulls in live market data from free APIs (yfinance, MFAPI.in, nsepython), and displays everything through a polished multi-page Streamlit dashboard. Eight pages cover your portfolio, individual stock analysis, mutual funds, buy/sell signals, tax calculation, live positions & orders, account/margin details, and an AI chat advisor — all at zero cost.
 
-**This project is intentionally free-first:** every API used either has a generous free tier or runs entirely offline.
+---
+
+## Table of Contents
+
+1. [Features](#features)
+2. [Screenshots](#screenshots)
+3. [Prerequisites](#prerequisites)
+4. [Installation — Step by Step](#installation--step-by-step)
+5. [Setting Up Kite Connect (Zerodha)](#setting-up-kite-connect-zerodha)
+6. [Setting Up an LLM (AI Advisor)](#setting-up-an-llm-ai-advisor)
+7. [Environment Variables Reference](#environment-variables-reference)
+8. [Daily Usage](#daily-usage)
+9. [Using Without Kite (CSV Import)](#using-without-kite-csv-import)
+10. [App Pages Guide](#app-pages-guide)
+11. [Stopping the App](#stopping-the-app)
+12. [Troubleshooting](#troubleshooting)
+13. [Architecture](#architecture)
+14. [Project Structure](#project-structure)
+15. [Signal Methodology](#signal-methodology)
+16. [Tax Calculator Methodology](#tax-calculator-methodology)
+17. [Extending the Project](#extending-the-project)
+18. [Contributing](#contributing)
+19. [Disclaimer](#disclaimer)
+20. [License](#license)
 
 ---
 
 ## Features
 
-### Portfolio Management
-- Live portfolio sync via Kite Connect API (Zerodha personal tier)
-- CSV fallback — import holdings exported from Zerodha, Groww, or Kuvera
-- Real-time P&L and unrealized gains/losses per holding
-- Portfolio XIRR calculated and compared against Nifty 50 benchmark
-- Sector-wise and asset-class allocation pie charts
-- Average buy price and cost basis tracking
-- Top 5 gainers and losers at a glance
-
-### Stock Analysis
-- Interactive price chart with configurable date range
-- Technical indicator overlays: EMA 20 / 50 / 200, Bollinger Bands
-- Subplots: RSI (14), MACD (12, 26, 9)
-- Fundamental scorecard: P/E ratio, forward P/E, EV/EBITDA, ROE, ROCE, Debt/Equity, Promoter holding %, EPS TTM
-- 52-week high/low proximity gauge
-- NSE live quote (open, high, low, volume, circuit limits)
-- Analyst consensus summary (from Yahoo Finance)
-
-### Mutual Fund Tracking
-- NAV history chart for any AMFI-registered fund (via MFAPI.in — free, no auth)
-- SIP XIRR calculator: enter installment dates + amounts + current value, get true annualised return
-- Fund search by name or AMC
-- Category comparison: top funds by 1Y / 3Y / 5Y returns
-- Expense ratio and AUM information
-
-### Buy / Sell Signals
-- 10-point scored signal engine combining technical and fundamental analysis
-- Per-stock signal card: score, category (Strong Buy / Buy / Hold / Sell / Strong Sell), reason breakdown
-- Watchlist management — track any NSE ticker, not just your holdings
-- RSI screener: all watched stocks sorted by RSI value
-- MACD crossover detection (bullish / bearish crossover within the last 3 candles)
-- EMA200 trend filter: flag stocks trading below their 200-day moving average
-
-### Tax Calculator (India FY 2024-25)
-- Classify each lot as LTCG (> 1 year) or STCG (≤ 1 year)
-- LTCG on equity: 12.5% above ₹1.25 lakh annual exemption (Budget 2024)
-- STCG on equity: 20% flat (Budget 2024)
-- Debt mutual fund: taxed at income slab rate regardless of holding period (post-April 2023)
-- Tax-loss harvesting suggestions: shows unrealised losses in your portfolio that could offset booked gains
-- Export-ready summary table
-
-### AI Portfolio Advisor
-- Chat interface with full portfolio context injected as system prompt
-- Supports three free LLM backends (selectable from a dropdown in the UI):
-  - **Google Gemini 2.0 Flash** — 15 requests/min, 1,500 requests/day free via Google AI Studio
-  - **Groq (Llama 3.3 70B)** — fast cloud inference, free tier
-  - **Ollama (local)** — completely offline, supports Qwen2.5, Llama3.3, Mistral, and others
-- FinBERT sentiment analysis on the last 10 news headlines for any stock (local HuggingFace model, ~500 MB one-time download)
-- Pre-built query buttons: "Suggest rebalancing", "What should I sell?", "Best SIP for 5 years", "Explain my XIRR"
-- Conversation history preserved for the session
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                           Streamlit UI                               │
-│  1_Portfolio │ 2_Stocks │ 3_MutualFunds │ 4_Signals │ 5_Tax │ 6_AI  │
-└──────────────────────────────┬───────────────────────────────────────┘
-                               │
-             ┌─────────────────┼─────────────────┐
-             │                 │                 │
-     ┌───────▼───────┐  ┌──────▼──────┐  ┌──────▼────────┐
-     │  analytics/   │  │    llm/     │  │    data/      │
-     │               │  │             │  │               │
-     │ portfolio.py  │  │ client.py   │  │ kite_client   │
-     │ technicals.py │  │ advisor.py  │  │ market_data   │
-     │ fundamentals  │  │ prompts.py  │  │ mf_client     │
-     │ signals.py    │  └──────┬──────┘  │ nse_client    │
-     │ mf_analytics  │         │         │ cache.py      │
-     │ tax.py        │         │         └──────┬────────┘
-     └───────────────┘         │                │
-                               │                │
-             ┌─────────────────┘                │
-             │                                  │
-   ┌─────────▼──────────────┐      ┌────────────▼───────────────────┐
-   │     Free LLM Backends  │      │       External APIs (Free)     │
-   │                        │      │                                │
-   │ • Gemini 2.0 Flash     │      │ • Kite Connect (Zerodha)       │
-   │   (Google AI Studio)   │      │   holdings, positions, orders  │
-   │ • Ollama (local)       │      │                                │
-   │   qwen2.5 / llama3.3   │      │ • yfinance (Yahoo Finance)     │
-   │ • Groq free tier       │      │   prices, OHLCV, fundamentals  │
-   │   llama-3.3-70b        │      │                                │
-   │ • FinBERT (HF local)   │      │ • MFAPI.in (AMFI data)         │
-   │   financial sentiment  │      │   NAV history, fund list       │
-   └────────────────────────┘      │                                │
-                                   │ • nsepython (NSE scraper)      │
-                                   │   live quotes, option chain    │
-                                   └────────────────────────────────┘
-```
-
----
-
-## Tech Stack
-
-| Library | Purpose |
+| Category | Highlights |
 |---|---|
-| `streamlit` | Multi-page web UI |
-| `plotly` | Interactive candlestick, line, and pie charts |
-| `kiteconnect` | Zerodha Kite Connect SDK — portfolio data |
-| `yfinance` | Yahoo Finance — historical prices, fundamentals |
-| `nsepython` | NSE India live quotes and option chain (unofficial) |
-| `requests` | HTTP calls to MFAPI.in |
-| `pandas` | Data manipulation and analysis |
-| `numpy` | Numerical calculations |
-| `pandas-ta` | Technical indicators (RSI, MACD, EMA, BBands) |
-| `pyxirr` | XIRR / IRR calculation for SIP returns |
-| `litellm` | Unified LLM client (Gemini, Ollama, Groq) |
-| `transformers` | HuggingFace FinBERT for sentiment analysis |
-| `torch` | PyTorch backend for FinBERT inference |
-| `python-dotenv` | Load `.env` file into environment |
+| **Home Dashboard** | Welcome banner, portfolio snapshot (value, day P&L, overall P&L, XIRR), market pulse (Nifty 50 level, market status, available cash), top movers |
+| **Portfolio** | Live holdings sync, P&L per stock, day change tracking, XIRR vs Nifty 50 benchmark, sector allocation pie, instrument-type breakdown |
+| **Stock Analysis** | Candlestick chart with EMA/BBands overlays, RSI + MACD subplots, fundamental scorecard, 52-week range, analyst consensus, FinBERT news sentiment |
+| **Mutual Funds** | NAV history chart, SIP XIRR calculator, fund search, category leaderboard (1Y/3Y/5Y), fund comparison overlay |
+| **Signals** | 0-10 scored signal engine, watchlist management, RSI/MACD/EMA200 screener, color-coded badges |
+| **Tax Calculator** | LTCG/STCG classification (FY 2023-24 & 2024-25), LTCG exemption, tax-loss harvesting suggestions |
+| **Positions & Orders** | Live open positions with unrealised/realised/M2M P&L, full order book with status filtering |
+| **Account** | Profile details, funds overview (cash, collateral, intraday payin), margin utilization gauge, detailed breakdown |
+| **AI Advisor** | Chat with your portfolio using Gemini, Groq, or Ollama — portfolio context auto-injected, pre-built queries |
+
+---
+
+## Screenshots
+
+*Coming soon — run the app to see the dashboard in action.*
 
 ---
 
 ## Prerequisites
 
-- **Python 3.10 or higher**
-- A **Zerodha account** for Kite Connect API access (or export a holdings CSV from any broker)
-- At least **one LLM backend** for the AI Advisor:
-  - [Google AI Studio](https://aistudio.google.com) — free, get a `GOOGLE_API_KEY`
-  - [Groq](https://console.groq.com) — free tier, get a `GROQ_API_KEY`
-  - [Ollama](https://ollama.com) — local, install and pull a model (e.g. `ollama pull qwen2.5`)
-- Git
+Before you begin, make sure you have:
+
+| Requirement | Why | How to Get It |
+|---|---|---|
+| **Python 3.10+** | Runtime | [python.org](https://www.python.org/downloads/) or `brew install python` on macOS |
+| **Git** | Clone the repo | [git-scm.com](https://git-scm.com/) or `brew install git` |
+| **Zerodha account** (optional) | Live portfolio data via Kite Connect | [zerodha.com](https://zerodha.com/) — or skip and use CSV import |
+| **At least one LLM API key** (optional) | AI Advisor chat feature | See [Setting Up an LLM](#setting-up-an-llm-ai-advisor) |
 
 ---
 
-## Installation
+## Installation — Step by Step
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/PersonalFinanceBot.git
-cd PersonalFinanceBot
+git clone https://github.com/Aarav-Nigam/Personal_Finance_Bot.git
+cd Personal_Finance_Bot
 ```
 
 ### 2. Create a virtual environment
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate        # macOS / Linux
-# .venv\Scripts\activate         # Windows
+python3 -m venv venv
+source venv/bin/activate        # macOS / Linux
+# venv\Scripts\activate         # Windows
 ```
+
+You'll need to activate this virtual environment every time you open a new terminal session to use the bot.
 
 ### 3. Install dependencies
 
@@ -170,233 +100,568 @@ source .venv/bin/activate        # macOS / Linux
 pip install -r requirements.txt
 ```
 
-> **Note:** Installing `torch` for FinBERT pulls ~2 GB. If you don't want the AI Advisor's sentiment feature, comment out `transformers` and `torch` in `requirements.txt` and set `FINBERT_ENABLED=false` in your `.env`.
+> **Note on FinBERT:** Installing `torch` and `transformers` pulls ~2 GB for the FinBERT sentiment model. If you don't need news sentiment analysis on the Stocks page, set `FINBERT_ENABLED=false` in your `.env` and you can skip those packages.
 
-### 4. Configure environment variables
+### 4. Create your `.env` file
 
 ```bash
-cp .env.example .env
-# Edit .env and fill in your keys (see Environment Variables section below)
+cp env.template .env
 ```
 
-### 5. Run the app
+Open `.env` in any text editor and fill in your keys. See [Environment Variables Reference](#environment-variables-reference) for details on each variable.
+
+### 5. Start the app
 
 ```bash
 streamlit run app.py
 ```
 
-Open your browser at `http://localhost:8501`.
+The app opens automatically at **http://localhost:8501**. If it doesn't, open that URL in your browser manually.
 
 ---
 
-## Environment Variables
+## Setting Up Kite Connect (Zerodha)
 
-Copy `.env.example` to `.env` and fill in the values you need. Every variable is optional except at least one LLM key for the AI Advisor.
-
-```bash
-# ─────────────────────────────────────────────────────────────────────
-# Kite Connect (Zerodha)
-# Required for live portfolio sync. Leave blank to use CSV import.
-# ─────────────────────────────────────────────────────────────────────
-KITE_API_KEY=             # From kite.trade developer console
-KITE_API_SECRET=          # From kite.trade developer console
-KITE_ACCESS_TOKEN=        # Generated daily via scripts/kite_auth.py
-
-# ─────────────────────────────────────────────────────────────────────
-# LLM Backends (at least one required for AI Advisor)
-# ─────────────────────────────────────────────────────────────────────
-GOOGLE_API_KEY=           # Google AI Studio — free tier (15 RPM / 1500 RPD)
-GROQ_API_KEY=             # Groq Cloud — free tier, ultra-fast inference
-OLLAMA_BASE_URL=http://localhost:11434    # Ollama local server URL
-
-# Default LLM provider when the app starts
-# Options: gemini | groq | ollama
-LLM_PROVIDER=gemini
-
-# Default model name (LiteLLM format)
-# Gemini: gemini/gemini-2.0-flash-exp
-# Groq:   groq/llama-3.3-70b-versatile
-# Ollama: ollama/qwen2.5
-LLM_MODEL=gemini/gemini-2.0-flash-exp
-
-# ─────────────────────────────────────────────────────────────────────
-# FinBERT Sentiment (optional — ~500 MB first-time download)
-# ─────────────────────────────────────────────────────────────────────
-FINBERT_ENABLED=true      # Set to false to disable sentiment analysis
-
-# ─────────────────────────────────────────────────────────────────────
-# Cache settings
-# ─────────────────────────────────────────────────────────────────────
-CACHE_TTL_SECONDS=300     # How long to cache market data (seconds). Default 5 min.
-CACHE_DIR=.cache          # Directory for JSON cache files
-```
-
----
-
-## Kite Connect Authentication
-
-Kite Connect access tokens expire every day at 6:00 AM IST. You need to refresh the token each trading day before using live portfolio data.
+Kite Connect gives you live holdings, positions, orders, margins, and profile data from your Zerodha account. It's free on the personal tier (no ₹2000/month charge — that's only for placing orders via API).
 
 ### One-time setup
 
-1. Log in to [kite.trade](https://kite.trade) and create a new app under **Developer Console**
-2. Set redirect URL to `http://localhost:8080`
-3. Copy your **API Key** and **API Secret** into `.env`
+1. Go to [kite.trade](https://kite.trade) and log in with your Zerodha credentials
+2. Navigate to **My Apps** in the developer console
+3. Click **Create New App** (choose "Connect" type)
+4. Set the **Redirect URL** to: `http://127.0.0.1:8080`
+5. Note down your **API Key** and **API Secret**
+6. Add them to your `.env` file:
+   ```
+   KITE_API_KEY=your_api_key_here
+   KITE_API_SECRET=your_api_secret_here
+   ```
+7. **Whitelist your IP:** In the developer console, add your public IP address (find it at [whatismyip.com](https://whatismyip.com)). Kite rejects API calls from non-whitelisted IPs.
 
 ### Daily token refresh
 
-Run this script each morning (or whenever the app shows "Invalid access token"):
+Kite access tokens **expire every day at 6:00 AM IST**. Each trading day, before using the app with live data, run:
 
 ```bash
 python scripts/kite_auth.py
 ```
 
-The script will:
-1. Open the Kite login URL in your browser
-2. Ask you to paste the full redirect URL after login (it contains the `request_token`)
-3. Exchange the request token for an access token
-4. Automatically write `KITE_ACCESS_TOKEN=...` into your `.env` file
+This will:
+1. Open the Kite login page in your browser
+2. You log in with your Zerodha credentials and complete 2FA
+3. After login, your browser redirects to `http://127.0.0.1:8080?request_token=...&status=success`
+4. Copy the **full URL** from your browser's address bar
+5. Paste it into the terminal when prompted
+6. The script exchanges the token and saves `KITE_ACCESS_TOKEN` in your `.env` automatically
 
-### Automating the refresh (optional)
+```
+$ python scripts/kite_auth.py
 
-Add a cron job to run the script at 8:30 AM IST daily. Since the token exchange requires a browser login, you will still need to complete the login step manually — the script just handles the API exchange automatically after you paste the URL.
+Opening Kite login in browser...
+https://kite.zerodha.com/connect/login?api_key=xxx&v=3
+
+After logging in, paste the full redirect URL here: http://127.0.0.1:8080?request_token=abc123&status=success
+
+Access token saved to .env (...abc123)
+Token expires at 6:00 AM IST tomorrow. Re-run this script daily.
+```
+
+After refreshing the token, start (or restart) the Streamlit app and all Kite-dependent features will work.
 
 ---
 
-## CSV Import (No Kite API Required)
+## Setting Up an LLM (AI Advisor)
 
-If you don't have Kite Connect API access, you can import a static holdings CSV. The app detects the absence of `KITE_ACCESS_TOKEN` and shows a file uploader.
+The AI Advisor page lets you chat about your portfolio with an LLM. You need at least one of these configured. All three are free.
 
-### Supported CSV formats
+### Option 1: Google Gemini (Recommended)
 
-**Zerodha Console export** (Holdings → Download as CSV):
+Best balance of quality and speed. Free tier is generous.
+
+1. Go to [aistudio.google.com](https://aistudio.google.com)
+2. Click **Get API Key** and create one
+3. Add to `.env`:
+   ```
+   GOOGLE_API_KEY=your_key_here
+   LLM_PROVIDER=gemini
+   LLM_MODEL=gemini/gemini-2.5-flash
+   ```
+
+Free tier: 15 requests/minute, 1,500 requests/day.
+
+### Option 2: Groq (Ultra-fast inference)
+
+Groq runs Llama 3.3 70B on custom hardware — responses come back almost instantly.
+
+1. Go to [console.groq.com](https://console.groq.com) and sign up
+2. Create an API key
+3. Add to `.env`:
+   ```
+   GROQ_API_KEY=your_key_here
+   LLM_PROVIDER=groq
+   LLM_MODEL=groq/llama-3.3-70b-versatile
+   ```
+
+Free tier: 6,000 requests/day, 500K tokens/day.
+
+> **Note:** Groq may not work on corporate networks with SSL-intercepting proxies (e.g., Zscaler). If you get SSL or 403 errors, try from a home network.
+
+### Option 3: Ollama (Fully offline, no API key)
+
+Everything runs on your machine. No data leaves your computer.
+
+1. Install Ollama from [ollama.com](https://ollama.com)
+2. Pull a model:
+   ```bash
+   ollama pull qwen2.5       # Good all-round, 4.7 GB
+   ollama pull mistral        # Mistral 7B, 4.1 GB — fast on CPU
+   ollama pull llama3.3       # Llama 3.3 70B, 42 GB — needs 64 GB RAM
+   ```
+3. Ollama serves automatically after pulling. If not, start it:
+   ```bash
+   ollama serve
+   ```
+4. Add to `.env`:
+   ```
+   LLM_PROVIDER=ollama
+   LLM_MODEL=ollama/qwen2.5
+   OLLAMA_BASE_URL=http://localhost:11434
+   ```
+
+### Switching LLM providers at runtime
+
+You don't need to restart the app to switch providers. On the **AI Advisor** page, use the provider dropdown in the sidebar to switch between Gemini, Groq, and Ollama mid-session. The `.env` values are just the defaults.
+
+---
+
+## Environment Variables Reference
+
+Copy `env.template` to `.env` and fill in the values. Every variable has a sensible default or is optional.
+
+| Variable | Required? | Default | Description |
+|---|---|---|---|
+| `KITE_API_KEY` | For live data | — | Zerodha developer console API key |
+| `KITE_API_SECRET` | For live data | — | Zerodha developer console API secret |
+| `KITE_ACCESS_TOKEN` | For live data | — | Auto-set by `scripts/kite_auth.py` daily |
+| `GOOGLE_API_KEY` | For Gemini AI | — | Google AI Studio API key |
+| `GROQ_API_KEY` | For Groq AI | — | Groq Cloud API key |
+| `OLLAMA_BASE_URL` | For Ollama AI | `http://localhost:11434` | Ollama server URL |
+| `LLM_PROVIDER` | No | `gemini` | Default AI provider: `gemini`, `groq`, or `ollama` |
+| `LLM_MODEL` | No | `gemini/gemini-2.5-flash` | Default model in LiteLLM format |
+| `FINBERT_ENABLED` | No | `true` | Set `false` to skip FinBERT sentiment (~500 MB download) |
+| `CACHE_TTL_SECONDS` | No | `300` | How long to cache market data (seconds) |
+| `CACHE_DIR` | No | `.cache` | Directory for JSON cache files |
+
+---
+
+## Daily Usage
+
+Here's the workflow for using the bot each trading day:
+
+### Morning startup
+
+```bash
+# 1. Open a terminal and navigate to the project
+cd ~/Documents/Personal\ Projects/Personal_Finance_Bot
+
+# 2. Activate the virtual environment
+source venv/bin/activate
+
+# 3. Refresh your Kite access token (expires daily at 6 AM IST)
+python scripts/kite_auth.py
+# → Log in via browser, paste the redirect URL when prompted
+
+# 4. Start the app
+streamlit run app.py
+# → Opens at http://localhost:8501
 ```
-Instrument,Quantity,Avg. cost,LTP,Cur. val,P&L,Net chg.,Day chg.
-RELIANCE,10,2450.00,2510.50,25105.00,605.00,2.47%,0.82%
+
+### What you can do
+
+- **Home page** — Quick glance at portfolio value, day P&L, market status, top movers
+- **Portfolio** — Deep dive into holdings, allocation, P&L breakdown, XIRR vs Nifty
+- **Stocks** — Search any NSE ticker for chart + technicals + fundamentals + signal
+- **Mutual Funds** — Look up any fund's NAV history, calculate SIP XIRR, compare funds
+- **Signals** — Check your watchlist for buy/sell signals, add/remove tickers
+- **Tax** — Enter trade lots to calculate LTCG/STCG tax, check harvesting opportunities
+- **AI Advisor** — Ask questions about your portfolio in plain English
+- **Positions** — View today's open positions and full order book (Kite required)
+- **Account** — Check available cash, margin utilization, profile details (Kite required)
+
+### If the token expires mid-day
+
+If you see an error like "Invalid access token" or "TokenException", your Kite token has expired or become invalid. Just run `python scripts/kite_auth.py` again in your terminal, then refresh the browser page (Ctrl+R / Cmd+R).
+
+### Refreshing market data
+
+Market data is cached for 5 minutes by default (configurable via `CACHE_TTL_SECONDS`). To force a refresh:
+- **Signals page:** Click the "Refresh" button
+- **Other pages:** Just wait for the cache to expire, or clear it manually by deleting the `.cache/` directory
+
+---
+
+## Using Without Kite (CSV Import)
+
+You don't need a Zerodha account to use the bot. If Kite isn't connected, the app shows a CSV uploader in the sidebar.
+
+### How to export your holdings CSV
+
+**From Zerodha Console:**
+1. Go to [console.zerodha.com](https://console.zerodha.com) → Holdings
+2. Click the download/export button
+3. Upload the downloaded CSV into the app
+
+**From Groww:**
+1. Go to Stocks → Holdings → Download statement
+2. Upload the CSV
+
+**From any broker:**
+Create a CSV with these columns (column names are auto-detected):
+
+```csv
+Symbol,Quantity,Avg Price,LTP
+RELIANCE,10,2450.00,2510.50
+TCS,5,3800.00,3920.00
+INFY,20,1400.00,1520.30
 ```
 
-**Generic format** (fallback — the app auto-detects column names):
-| Required columns | Optional columns |
+The parser is flexible — it recognizes common column name variations (`instrument`, `tradingsymbol`, `qty`, `avg_cost`, `average_price`, `last_price`, `ltp`, etc.).
+
+### What works without Kite
+
+| Feature | Works with CSV? |
 |---|---|
-| `symbol` (NSE ticker) | `exchange` (defaults to NSE) |
-| `quantity` | `isin` |
-| `avg_cost` (average buy price) | `product` (CNC / MIS) |
-
-**Groww / Kuvera exports** are also auto-detected by column name matching.
+| Portfolio overview (value, P&L, allocation) | Yes |
+| Stock analysis (chart, technicals, fundamentals) | Yes |
+| Mutual Funds (NAV, SIP XIRR, leaderboard) | Yes |
+| Signals (watchlist screener) | Yes |
+| Tax calculator | Yes |
+| AI Advisor | Yes (uses CSV holdings as context) |
+| Positions & Orders | No (needs live Kite connection) |
+| Account & Funds | No (needs live Kite connection) |
+| Day P&L on home page | No (needs Kite `day_change` field) |
 
 ---
 
-## App Pages
+## App Pages Guide
 
-### 1. Portfolio Overview
-The landing page. Shows your complete holdings table with current price, P&L, P&L%, invested value, and current value. Sector allocation pie chart on the right. Cards at the top display:
-- Total invested amount
-- Current portfolio value
-- Unrealised P&L (absolute + %)
-- Portfolio XIRR vs Nifty 50 XIRR for the same period
+### Home Dashboard
+The landing page after login. Shows:
+- **Welcome banner** with your name (from Kite profile, or "PersonalFinanceBot" without Kite)
+- **Portfolio snapshot** — 4 cards: total value, day P&L, overall P&L with %, portfolio XIRR
+- **Market pulse** — Nifty 50 level with daily change, market open/closed status, available cash
+- **Top movers** — Your top 3 gainers and top 3 losers for the day
+- **Quick links** — One-click navigation to all 8 pages
 
-Use the date range slider to see portfolio value over time.
+### 1. Portfolio
+Full holdings breakdown:
+- 5 metric cards: invested value, current value, P&L, holdings count, XIRR
+- Nifty 50 comparison: your XIRR vs Nifty CAGR with alpha
+- Holdings table with day change column (green/red coloring)
+- Sector allocation pie + instrument type pie side by side
+- Top gainers and losers bar charts
 
 ### 2. Stock Analysis
-Search any NSE ticker (e.g., `RELIANCE`, `TCS`, `INFY`) to get a full analysis page:
-
-**Price chart** — Candlestick OHLCV with selectable overlays: EMA20, EMA50, EMA200, Bollinger Bands (20, 2).
-
-**Signal card** — Buy / Hold / Sell score from 0–10 with a breakdown of which conditions contributed (see Signal Methodology below).
-
-**Fundamentals table:**
-| Metric | Source |
-|---|---|
-| P/E (TTM) | Yahoo Finance |
-| Forward P/E | Yahoo Finance |
-| EV/EBITDA | Yahoo Finance |
-| Price/Book | Yahoo Finance |
-| ROE | Yahoo Finance |
-| ROCE | Derived from yfinance financials |
-| Debt/Equity | Yahoo Finance |
-| Promoter holding % | NSE via nsepython |
-| EPS (TTM) | Yahoo Finance |
-| Revenue growth (YoY) | Yahoo Finance financials |
-
-**News + sentiment** — 5 latest headlines with FinBERT sentiment label (Positive / Neutral / Negative) and score.
+Search any NSE ticker (e.g., `RELIANCE`, `TCS`, `INFY`):
+- **Candlestick chart** with toggleable overlays: EMA 20/50/200, Bollinger Bands
+- **RSI subplot** (14-period) with overbought/oversold zones
+- **MACD subplot** with signal line and histogram
+- **Signal card** — 0-10 score with badge (Strong Buy / Buy / Hold / Sell / Strong Sell)
+- **Fundamentals scorecard** — P/E, forward P/E, EV/EBITDA, P/B, ROE, ROCE, D/E, promoter holding %, EPS, revenue growth
+- **52-week range** progress bar
+- **Analyst consensus** from Yahoo Finance
+- **News & Sentiment** — Latest 10 headlines with FinBERT sentiment labels (in expander)
 
 ### 3. Mutual Funds
-- **NAV History** — search any AMFI fund name, view NAV chart for 1M / 3M / 6M / 1Y / 3Y / 5Y
-- **SIP XIRR Calculator** — enter a list of (date, amount) SIP payments and your current NAV, get annualised XIRR
-- **Fund Search** — search by AMC or fund name, see snapshot (AUM, expense ratio, category, fund manager)
-- **Category Leaderboard** — top 10 funds by 3Y return in a chosen category (Large Cap, ELSS, Flexi Cap, etc.)
+Three tabs:
+- **Fund Search & NAV** — Search any AMFI fund, view NAV chart for 1M to 5Y, fund details
+- **SIP XIRR Calculator** — Enter installment dates + amounts + current value, get true XIRR
+- **Category Leaderboard** — Top 10 funds by returns in any category (Large Cap, ELSS, Flexi Cap, etc.)
 
 ### 4. Signals Dashboard
-Master screener across your watchlist. Each row shows:
-- Ticker, current price, 1D change %
-- Technical score (0–10) and the top triggering conditions
-- Signal badge: **Strong Buy** (≥8) / **Buy** (6–7) / **Hold** (4–5) / **Sell** (2–3) / **Strong Sell** (0–1)
-- RSI value with colour coding
-- MACD crossover status
-
-Add/remove tickers to your watchlist from this page. The watchlist persists in `watchlist.json`.
+Watchlist-based screener:
+- **Summary badges** at top: count of Strong Buy / Buy / Hold / Sell / Strong Sell across your watchlist
+- Per-ticker row: price, 1D change, score progress bar, signal badge, RSI (color-coded), top reason
+- **Watchlist management** in sidebar: add/remove tickers (persists to `watchlist.json`)
+- **Refresh button** clears cache and re-computes all signals
 
 ### 5. Tax Calculator
-**Equity LTCG/STCG calculator:**
-1. Enter each lot: ticker, buy date, buy price, sell date, sell price, quantity
-2. The app classifies the lot and calculates tax
-3. Summary card shows total STCG, total LTCG, exempt LTCG (up to ₹1.25L), and net tax due
+Two tabs:
+- **Tax Lots** — Enter each trade (symbol, buy date, sell date, prices, quantity). The app classifies as STCG/LTCG, calculates tax with exemption. STCG vs LTCG donut chart.
+- **Tax-Loss Harvesting** — Scans your portfolio for unrealised losses that could offset gains. Shows potential tax savings.
 
-**Tax-loss harvesting:**
-Scans your current unrealised losses and shows which holdings you could sell to offset booked gains, ranked by loss amount.
+Supports FY 2023-24 and FY 2024-25 with different rates.
 
-**FY selector** — supports FY 2023-24 and FY 2024-25 (different LTCG/STCG rates apply).
+### 6. AI Advisor
+Chat interface with:
+- Auto-injected portfolio context (holdings, XIRR, allocation, market data)
+- **Provider dropdown** in sidebar to switch between Gemini / Groq / Ollama
+- **Connection status indicator** (green/red dot)
+- Pre-built query buttons: rebalancing, what to sell, sector exposure, SIP recommendations, XIRR explanation, tax situation
+- Full conversation history for the session
 
-### 6. AI Portfolio Advisor
-Chat interface powered by your chosen LLM. The system prompt is automatically populated with:
-- Your current holdings, quantities, average costs, current P&L
-- Portfolio XIRR and allocation summary
-- Market context (Nifty 50 level, top sector performance for the day)
+### 7. Positions & Orders
+Requires Kite connection. Two tabs:
+- **Active Positions** — Unrealised P&L, Realised P&L, M2M as metric cards. Positions table with quantity, avg price, LTP. Toggle to show/hide closed positions.
+- **Order Book** — Status badge counts (Complete, Rejected, Pending). Full orders table with filter-by-status dropdown.
 
-Pre-built queries (click to send):
-- "Suggest portfolio rebalancing"
-- "Which stocks should I consider selling?"
-- "Analyse my sector exposure"
-- "Recommend SIP funds for a 5-year horizon"
-- "Explain my portfolio XIRR vs benchmark"
-- "What is my tax situation this FY?"
+### 8. Account & Funds
+Requires Kite connection:
+- **Profile** — Name, email, broker, enabled exchanges and products
+- **Funds overview** — 4 cards: available cash, collateral, intraday payin, opening balance
+- **Margin utilization gauge** — Visual gauge showing used vs available margin
+- **Detailed breakdown** — Expandable section with all equity margin components
 
-LLM provider dropdown lets you switch between Gemini, Groq, and Ollama mid-session.
+---
+
+## Stopping the App
+
+### Method 1: Keyboard shortcut (recommended)
+
+In the terminal where Streamlit is running, press:
+
+```
+Ctrl + C
+```
+
+This stops the Streamlit server cleanly.
+
+### Method 2: Close the terminal
+
+Simply close the terminal window. The Streamlit process will be killed.
+
+### Method 3: Kill by port (if the process is stuck)
+
+If the app is running but you can't find the terminal:
+
+```bash
+# Find the process using port 8501
+lsof -ti:8501 | xargs kill -9
+
+# Or if running on a different port (e.g., 8502)
+lsof -ti:8502 | xargs kill -9
+```
+
+### Deactivating the virtual environment
+
+After stopping the app, deactivate the Python virtual environment:
+
+```bash
+deactivate
+```
+
+---
+
+## Troubleshooting
+
+### "Invalid access token" / "TokenException"
+
+Your Kite token has expired (they expire daily at 6 AM IST). Run:
+```bash
+python scripts/kite_auth.py
+```
+Then refresh the browser page.
+
+### "KITE_API_KEY and KITE_API_SECRET must be set"
+
+You haven't configured Kite credentials in `.env`. Either:
+- Add your Kite API key/secret (see [Setting Up Kite Connect](#setting-up-kite-connect-zerodha))
+- Or skip Kite and use CSV import instead
+
+### "Connect Kite to view positions" / "Connect Kite to view account details"
+
+Positions and Account pages require a live Kite connection. They don't work with CSV import.
+
+### Streamlit command not found
+
+The virtual environment isn't activated. Run:
+```bash
+source venv/bin/activate    # macOS/Linux
+# venv\Scripts\activate     # Windows
+```
+
+### Port 8501 already in use
+
+Another Streamlit instance is running. Either:
+- Stop it with `Ctrl+C` in its terminal
+- Or kill it: `lsof -ti:8501 | xargs kill -9`
+- Or run on a different port: `streamlit run app.py --server.port 8502`
+
+### SSL certificate errors (CERTIFICATE_VERIFY_FAILED)
+
+If you're on a corporate network with an SSL-intercepting proxy (e.g., Zscaler):
+- **MFAPI.in** — Already handled (the app uses `verify=False`)
+- **Groq API** — May return 403 Forbidden. Use Gemini or Ollama instead, or try from a home network.
+- **FinBERT download** — Pre-download the model manually:
+  ```bash
+  mkdir -p ~/.cache/huggingface/finbert
+  cd ~/.cache/huggingface/finbert
+  for f in config.json tokenizer_config.json vocab.txt special_tokens_map.json; do
+    curl -sLk -o "$f" "https://huggingface.co/ProsusAI/finbert/resolve/main/$f"
+  done
+  curl -sLk -o pytorch_model.bin "https://huggingface.co/ProsusAI/finbert/resolve/main/pytorch_model.bin"
+  ```
+
+### Gemini API returns 429 / "quota exhausted"
+
+The free tier has a 15 requests/minute limit. Wait a minute and try again. If all requests fail immediately, your daily quota (1,500 requests) may be exhausted — wait until the next day.
+
+If the model ID returns a 404 ("model not found"), Gemini model names change periodically. Check [Google AI Studio](https://aistudio.google.com) for the current model ID and update `LLM_MODEL` in `.env`.
+
+### Signals page is slow
+
+The signal engine calls yfinance for each ticker in your watchlist. With 20+ tickers, the first load takes 30-60 seconds. Subsequent loads are faster thanks to caching (5 min TTL). Keep your watchlist focused on tickers you actually track.
+
+### "Fewer than 250 rows — using EMA50 as EMA200 fallback"
+
+This is normal for recently listed stocks. The app needs ~250 trading days of data for a proper 200-day EMA. For newer stocks, it uses the 50-day EMA as a proxy.
+
+### nsepython errors
+
+NSE updates its website frequently, breaking the unofficial nsepython scraper. The app automatically falls back to yfinance when nsepython fails. If you see warnings about NSE quotes, they're non-critical.
+
+---
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                               Streamlit UI                                       │
+│                                                                                  │
+│  Home │ Portfolio │ Stocks │ MF │ Signals │ Tax │ AI Advisor │ Positions │ Account│
+└──────────────────────────────────┬───────────────────────────────────────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                    │                    │
+    ┌─────────▼──────────┐  ┌─────▼──────┐  ┌─────────▼──────────┐
+    │    analytics/      │  │    llm/    │  │      data/         │
+    │                    │  │            │  │                    │
+    │  portfolio.py      │  │ client.py  │  │  kite_client.py    │
+    │  account.py        │  │ advisor.py │  │  market_data.py    │
+    │  technicals.py     │  │ prompts.py │  │  mf_client.py      │
+    │  fundamentals.py   │  │ sentiment  │  │  nse_client.py     │
+    │  signals.py        │  └─────┬──────┘  │  cache.py          │
+    │  mf_analytics.py   │        │         └─────────┬──────────┘
+    │  tax.py            │        │                   │
+    └────────────────────┘        │                   │
+                                  │                   │
+    ┌─────────────────────────────┘                   │
+    │                                                 │
+    │   ┌──────────────────────┐       ┌──────────────▼──────────────────┐
+    │   │  Free LLM Backends   │       │     External APIs (All Free)   │
+    │   │                      │       │                                │
+    │   │  Gemini 2.5 Flash    │       │  Kite Connect (Zerodha)        │
+    │   │  Groq (Llama 3.3)    │       │    holdings, positions, orders │
+    │   │  Ollama (local)      │       │    margins, profile            │
+    │   │  FinBERT (local)     │       │                                │
+    │   └──────────────────────┘       │  yfinance (Yahoo Finance)      │
+    │                                  │    prices, OHLCV, fundamentals │
+    │   ┌──────────────────────┐       │                                │
+    │   │     ui/              │       │  MFAPI.in (AMFI data)          │
+    │   │  theme.py            │       │    NAV history, fund list      │
+    │   │  styles.py           │       │                                │
+    │   │  charts.py           │       │  nsepython (NSE scraper)       │
+    │   └──────────────────────┘       │    live quotes                 │
+    │                                  └────────────────────────────────┘
+    │   ┌──────────────────────┐
+    │   │     utils/           │
+    │   │  calculations.py     │
+    │   │  formatters.py       │
+    │   └──────────────────────┘
+```
+
+### Data flow rule
+
+Pages (`pages/`) import from `analytics/`, `llm/`, and `utils/` — never directly from `data/`. The `data/` layer handles caching and API calls; `analytics/` provides business logic on top.
+
+---
+
+## Project Structure
+
+```
+Personal_Finance_Bot/
+├── app.py                          # Entry point — home dashboard
+├── requirements.txt                # Python dependencies
+├── pyproject.toml                  # Ruff config
+├── env.template                    # Template for environment variables
+├── .env                            # Your actual keys (git-ignored)
+├── .streamlit/
+│   └── config.toml                 # Streamlit theme (blue, white bg, sans-serif)
+├── config/
+│   └── settings.py                 # Reads .env, exposes Settings dataclass
+├── data/                           # External API wrappers + cache
+│   ├── cache.py                    # TTL-based JSON file cache
+│   ├── kite_client.py              # Zerodha Kite Connect SDK wrapper
+│   ├── market_data.py              # yfinance wrapper (OHLCV, fundamentals)
+│   ├── mf_client.py                # MFAPI.in wrapper (mutual fund data)
+│   └── nse_client.py               # nsepython wrapper (live NSE quotes)
+├── analytics/                      # Business logic layer
+│   ├── account.py                  # Margins, profile, positions, orders
+│   ├── portfolio.py                # P&L, XIRR, allocation, Nifty comparison
+│   ├── technicals.py               # EMA, RSI, MACD, BBands via pandas-ta
+│   ├── fundamentals.py             # P/E, ROE, ROCE, etc. aggregation
+│   ├── signals.py                  # 0-10 signal scoring engine
+│   ├── mf_analytics.py             # SIP XIRR, category returns, fund comparison
+│   └── tax.py                      # LTCG/STCG classification + tax computation
+├── llm/                            # AI features
+│   ├── client.py                   # LiteLLM wrapper (Gemini, Groq, Ollama)
+│   ├── advisor.py                  # Composes portfolio context + chat
+│   ├── prompts.py                  # System prompt templates
+│   └── sentiment.py                # FinBERT news sentiment analysis
+├── ui/                             # Design system
+│   ├── theme.py                    # Color palette, Plotly template
+│   ├── styles.py                   # CSS injection, metric cards, badges
+│   └── charts.py                   # Themed Plotly chart factories
+├── utils/
+│   ├── calculations.py             # XIRR, CAGR, annualised return
+│   └── formatters.py               # fmt_inr(), fmt_pct(), fmt_cr()
+├── pages/                          # Streamlit pages (auto-detected)
+│   ├── 1_Portfolio.py
+│   ├── 2_Stocks.py
+│   ├── 3_Mutual_Funds.py
+│   ├── 4_Signals.py
+│   ├── 5_Tax.py
+│   ├── 6_AI_Advisor.py
+│   ├── 7_Positions.py
+│   └── 8_Account.py
+└── scripts/
+    └── kite_auth.py                # Daily Kite OAuth token refresh
+```
 
 ---
 
 ## Signal Methodology
 
-The signal engine in `analytics/signals.py` computes a score from 0 to 10 for each stock. The score is the sum of technical signals only; fundamentals act as a modifier. A buy is triggered at score ≥ 6, a sell at score ≤ 3.
+The signal engine (`analytics/signals.py`) scores each stock from 0 to 10. Technical conditions form the base score; fundamentals act as a modifier.
 
-### Technical Score (0–10)
+### Technical Score (0-10)
 
 | Condition | Points |
 |---|---|
 | RSI (14) < 40 — oversold territory | +2 |
-| MACD line crosses above signal line (last 3 candles) — bullish crossover | +2 |
-| Current price above EMA 200 — long-term uptrend intact | +2 |
-| Current price below EMA 20 — short-term dip in an uptrend | +2 |
-| Current price touches or dips below Bollinger lower band (20, 2) | +2 |
+| MACD line crosses above signal line (last 3 candles) | +2 |
+| Price above EMA 200 — long-term uptrend intact | +2 |
+| Price below EMA 20 — short-term dip in an uptrend | +2 |
+| Price at or below Bollinger lower band (20, 2) | +2 |
 
-### Fundamental Modifier (adjusts score by ±2)
+### Fundamental Modifier (adjusts score by up to +/-2)
 
 | Condition | Modifier |
 |---|---|
-| P/E ratio < 30 AND ROE > 15% AND Debt/Equity < 1 | +2 (fundamentally healthy) |
-| P/E ratio > 50 OR Debt/Equity > 3 OR EPS declining YoY | −2 (fundamentally stretched) |
+| P/E < 30 AND ROE > 15% AND D/E < 1 | +2 |
+| P/E > 50 OR D/E > 3 OR EPS declining | -2 |
 
-### Signal Thresholds
+### Signal Labels
 
-| Score | Signal |
+| Score | Label |
 |---|---|
-| 9–10 | Strong Buy |
-| 7–8 | Buy |
-| 4–6 | Hold |
-| 2–3 | Sell |
-| 0–1 | Strong Sell |
+| 9-10 | Strong Buy |
+| 7-8 | Buy |
+| 4-6 | Hold |
+| 2-3 | Sell |
+| 0-1 | Strong Sell |
 
-> **Important:** These signals are informational tools, not financial advice. Always do your own research before making investment decisions.
+> These signals are informational tools, not financial advice. Always do your own research.
 
 ---
 
@@ -404,71 +669,18 @@ The signal engine in `analytics/signals.py` computes a score from 0 to 10 for ea
 
 ### Equity and Equity Mutual Funds
 
-| Holding period | Tax treatment (FY 2024-25) |
-|---|---|
-| ≤ 1 year (STCG) | 20% flat on gains |
-| > 1 year (LTCG) | 12.5% on gains above ₹1,25,000 annual exemption |
-
-The ₹1.25L LTCG exemption applies per financial year across all equity sales. The exemption is applied first to the oldest lots (FIFO by default).
+| Holding Period | FY 2024-25 | FY 2023-24 |
+|---|---|---|
+| STCG (up to 1 year) | 20% flat | 15% flat |
+| LTCG (over 1 year) | 12.5% above ₹1,25,000 | 10% above ₹1,00,000 |
 
 ### Debt Mutual Funds (post-April 2023)
 
-All gains from debt mutual funds are taxed at your income slab rate regardless of holding period. No indexation benefit applies for units purchased after 1 April 2023.
+All gains taxed at income slab rate. No indexation benefit.
 
-### Dividend Income
+### Tax-Loss Harvesting
 
-Dividends received from stocks and mutual funds are added to your total income and taxed at your applicable slab rate. Track them separately; they are not computed in this tool.
-
-### Tax-Loss Harvesting Logic
-
-The tool scans unrealised losses ≥ ₹500 in your holdings and pairs them with booked LTCG/STCG to show how much tax you could save by booking those losses before the financial year ends.
-
----
-
-## AI Advisor — LLM Setup
-
-### Option 1: Google Gemini (Recommended for most users)
-
-1. Go to [aistudio.google.com](https://aistudio.google.com)
-2. Click **Get API Key** → Create API key
-3. Add to `.env`: `GOOGLE_API_KEY=your-key`
-4. Set: `LLM_PROVIDER=gemini` and `LLM_MODEL=gemini/gemini-2.0-flash-exp`
-
-Free tier limits: 15 requests/minute, 1,500 requests/day, 1 million tokens/minute.
-
-### Option 2: Groq (Ultra-fast, free tier)
-
-1. Go to [console.groq.com](https://console.groq.com)
-2. Sign up and create an API key
-3. Add to `.env`: `GROQ_API_KEY=your-key`
-4. Set: `LLM_PROVIDER=groq` and `LLM_MODEL=groq/llama-3.3-70b-versatile`
-
-Free tier limits: 6,000 requests/day, 500K tokens/day on the 70B model.
-
-### Option 3: Ollama (Fully offline, no API key)
-
-1. Install Ollama from [ollama.com](https://ollama.com)
-2. Pull a model:
-   ```bash
-   ollama pull qwen2.5       # Good all-round (4.7 GB)
-   # or
-   ollama pull llama3.3      # Meta Llama 3.3 (42 GB — needs 64 GB RAM)
-   # or
-   ollama pull mistral       # Mistral 7B (4.1 GB — fast on CPU)
-   ```
-3. Start the Ollama server:
-   ```bash
-   ollama serve
-   ```
-4. Set: `LLM_PROVIDER=ollama`, `LLM_MODEL=ollama/qwen2.5`, `OLLAMA_BASE_URL=http://localhost:11434`
-
-### FinBERT Sentiment
-
-FinBERT (`ProsusAI/finbert`) is downloaded automatically from HuggingFace on first use (~500 MB). It runs locally with no API key. To disable it:
-
-```bash
-FINBERT_ENABLED=false
-```
+The tool scans unrealised losses >= ₹500 in your holdings and shows how much tax you could save by booking those losses before the financial year ends.
 
 ---
 
@@ -476,51 +688,42 @@ FINBERT_ENABLED=false
 
 ### Adding a new data source
 
-1. Create a new file in `data/` (e.g., `data/screener_client.py`)
-2. Implement a function that returns a `pandas.DataFrame` or plain dict
-3. Add a `cache.py` TTL wrapper around expensive HTTP calls
-4. Import and use it from the relevant `analytics/` module
+1. Create `data/your_source.py`
+2. Wrap all HTTP calls with `cache.get()` / `cache.set()`
+3. Import from an `analytics/` module (not directly from pages)
+4. Add any new API key to `env.template` and `config/settings.py`
 
-### Adding a new technical indicator
+### Adding a new page
 
-1. Open `analytics/technicals.py`
-2. Add a function that takes a `pd.DataFrame` with `close` / `high` / `low` / `volume` columns
-3. Use `pandas_ta` where possible: `df.ta.your_indicator()`
-4. Return the DataFrame with the new column appended
-5. Wire the new indicator into `analytics/signals.py` if it should affect the score
-
-### Adding a new Streamlit page
-
-1. Create `pages/7_YourPage.py` (the number prefix controls the sidebar order)
-2. Add `st.set_page_config(page_title="...", page_icon="...")` at the top
-3. Import from `data/`, `analytics/`, or `llm/` as needed
-4. The page will automatically appear in the sidebar
+1. Create `pages/N_PageName.py` (the number controls sidebar order)
+2. Import from `analytics/`, `llm/`, or `utils/`
+3. Use `ui.styles.inject_css()` for consistent styling
+4. The page auto-appears in the sidebar
 
 ### Adding a new LLM provider
 
 LiteLLM supports 100+ providers. To add one:
-
-1. Set the provider's API key as an environment variable
-2. In `llm/client.py`, add the provider to the `SUPPORTED_PROVIDERS` dict with its LiteLLM model string format
-3. Add the provider name to the dropdown list in `pages/6_AI_Advisor.py`
+1. Set the API key in `.env` and `config/settings.py`
+2. Add the provider to `SUPPORTED_PROVIDERS` in `llm/client.py`
+3. Add the provider name to the dropdown in `pages/6_AI_Advisor.py`
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please:
+Contributions are welcome!
 
-1. Fork the repository and create a feature branch (`git checkout -b feature/my-feature`)
+1. Fork the repo and create a feature branch (`git checkout -b feature/my-feature`)
 2. Keep commits small and focused
-3. Run `ruff check .` and `ruff format .` before committing (both are in `requirements.txt`)
-4. Open a pull request with a clear description of what changed and why
+3. Run `ruff check . && ruff format .` before committing
+4. Open a pull request with a clear description
 
 ### Reporting issues
 
 Open a GitHub Issue with:
-- Your Python version and OS
-- The full error traceback
-- Which data source or page the error occurred on
+- Python version and OS
+- Full error traceback
+- Which page the error occurred on
 
 ---
 
@@ -528,7 +731,7 @@ Open a GitHub Issue with:
 
 This tool is for **informational and educational purposes only**. It does not constitute financial advice. The buy/sell signals are generated by algorithmic rules and should not be the sole basis for investment decisions. Always consult a SEBI-registered investment advisor before making financial decisions.
 
-Past performance data shown in this tool is sourced from third-party APIs and may be inaccurate or delayed. The maintainers of this project are not responsible for any financial losses.
+Past performance data is sourced from third-party APIs and may be inaccurate or delayed. The maintainers are not responsible for any financial losses.
 
 ---
 
