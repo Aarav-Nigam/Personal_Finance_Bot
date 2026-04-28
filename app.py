@@ -21,7 +21,10 @@ if "llm_provider" not in st.session_state:
 if "kite_connected" not in st.session_state:
     st.session_state.kite_connected = False
 
-st.sidebar.title("PersonalFinanceBot")
+# ---------------------------------------------------------------------------
+# Sidebar
+# ---------------------------------------------------------------------------
+st.sidebar.title("📊 PersonalFinanceBot")
 st.sidebar.caption("v0.1.0 — Free & Open Source")
 
 
@@ -51,7 +54,10 @@ def _parse_csv(uploaded_file) -> pd.DataFrame:
         df["last_price"] = pd.to_numeric(raw[col_map["last_price"]], errors="coerce")
     else:
         df["last_price"] = df["average_price"]
-    return df.dropna(subset=["quantity", "average_price"])
+    df = df.dropna(subset=["quantity", "average_price"])
+    if "instrument_type" not in df.columns:
+        df["instrument_type"] = "EQ"
+    return df
 
 
 if st.session_state.holdings_df is None:
@@ -73,168 +79,29 @@ if not st.session_state.kite_connected:
 else:
     st.sidebar.success("Connected to Kite")
 
-from ui.styles import inject_css, metric_card, section_header  # noqa: E402
-
-inject_css()
-
 # ---------------------------------------------------------------------------
-# Welcome banner
+# Navigation
 # ---------------------------------------------------------------------------
-if st.session_state.kite_connected:
-    try:
-        from analytics.account import load_profile
+pg = st.navigation(
+    {
+        "": [
+            st.Page("home.py", title="Home", icon="🏠", default=True),
+        ],
+        "Analysis": [
+            st.Page("pages/1_Portfolio.py", title="Portfolio", icon="💼"),
+            st.Page("pages/2_Stocks.py", title="Stock Analysis", icon="📈"),
+            st.Page("pages/3_Mutual_Funds.py", title="Mutual Funds", icon="📊"),
+            st.Page("pages/4_Signals.py", title="Signals", icon="🔔"),
+        ],
+        "Tools": [
+            st.Page("pages/5_Tax.py", title="Tax Calculator", icon="🧾"),
+            st.Page("pages/6_AI_Advisor.py", title="AI Advisor", icon="🤖"),
+        ],
+        "Account": [
+            st.Page("pages/7_Positions.py", title="Positions & Orders", icon="📋"),
+            st.Page("pages/8_Account.py", title="Account & Funds", icon="👤"),
+        ],
+    }
+)
 
-        profile = load_profile()
-        user_name = profile.get("user_name", "Investor")
-        st.title(f"Welcome, {user_name}")
-    except Exception:
-        st.title("PersonalFinanceBot")
-else:
-    st.title("PersonalFinanceBot")
-
-# ---------------------------------------------------------------------------
-# Portfolio snapshot
-# ---------------------------------------------------------------------------
-holdings_df = st.session_state.get("holdings_df")
-
-if holdings_df is not None and not holdings_df.empty:
-    from analytics.portfolio import (
-        compute_pnl,
-        compute_xirr,
-        get_market_status,
-        get_portfolio_summary,
-        load_orders,
-    )
-    from utils.formatters import fmt_inr, fmt_pct
-
-    summary = get_portfolio_summary(holdings_df)
-    df_pnl = compute_pnl(holdings_df)
-
-    section_header("Portfolio Snapshot", icon="briefcase")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        metric_card(
-            "Total Value",
-            fmt_inr(summary["total_current_value"]),
-            icon="wallet",
-        )
-    with c2:
-        day_pnl = float(df_pnl["day_change"].sum()) if "day_change" in df_pnl.columns else None
-        if day_pnl is not None:
-            metric_card(
-                "Day P&L",
-                fmt_inr(day_pnl),
-                delta=fmt_pct(day_pnl / summary["total_current_value"])
-                if summary["total_current_value"]
-                else None,
-                delta_value=day_pnl,
-                icon="chart_increasing" if day_pnl >= 0 else "chart_decreasing",
-            )
-        else:
-            metric_card("Day P&L", "N/A", icon="chart_increasing")
-    with c3:
-        metric_card(
-            "Overall P&L",
-            fmt_inr(summary["total_pnl"]),
-            delta=fmt_pct(summary["total_pnl_pct"]),
-            delta_value=summary["total_pnl"],
-        )
-    with c4:
-        xirr_val = None
-        try:
-            orders = load_orders()
-            xirr_val = compute_xirr(orders, summary["total_current_value"])
-        except Exception:
-            pass
-        metric_card(
-            "Portfolio XIRR",
-            fmt_pct(xirr_val) if xirr_val is not None else "N/A",
-            icon="target",
-        )
-
-    # ---------------------------------------------------------------------------
-    # Market pulse
-    # ---------------------------------------------------------------------------
-    section_header("Market Pulse", icon="globe_showing_Asia-Australia")
-
-    mkt = get_market_status()
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        nifty_str = f"{mkt['nifty_level']:,.0f}" if mkt["nifty_level"] else "N/A"
-        metric_card(
-            "Nifty 50",
-            nifty_str,
-            delta=fmt_pct(mkt["nifty_change_pct"]) if mkt["nifty_change_pct"] is not None else None,
-            delta_value=mkt["nifty_change_pct"],
-        )
-    with m2:
-        status = mkt["status"]
-        color = "#00C853" if status == "Open" else "#FF9800" if status == "Pre-Open" else "#9E9E9E"
-        st.markdown(
-            f"""
-            <div class="pfb-card pfb-card-neutral">
-                <div class="card-label">Market Status</div>
-                <div class="card-value" style="color:{color}">{status}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with m3:
-        if st.session_state.kite_connected:
-            try:
-                from analytics.account import get_margin_summary
-
-                margins = get_margin_summary()
-                metric_card("Available Cash", fmt_inr(margins["cash"]), icon="money_bag")
-            except Exception:
-                metric_card("Available Cash", "N/A", icon="money_bag")
-        else:
-            metric_card("Available Cash", "Connect Kite", icon="money_bag")
-
-    # ---------------------------------------------------------------------------
-    # Top movers
-    # ---------------------------------------------------------------------------
-    section_header("Top Movers", icon="fire")
-    g_col, l_col = st.columns(2)
-    gainers = summary["top_gainers"].head(3)
-    losers = summary["top_losers"].head(3)
-
-    with g_col:
-        st.markdown("**Top Gainers**")
-        for _, row in gainers.iterrows():
-            pct = row["pnl_pct"]
-            color = "#00C853"
-            st.markdown(
-                f'<span style="font-weight:600">{row["tradingsymbol"]}</span> '
-                f'<span style="color:{color};font-weight:600">{pct * 100:+.1f}%</span>',
-                unsafe_allow_html=True,
-            )
-    with l_col:
-        st.markdown("**Top Losers**")
-        for _, row in losers.iterrows():
-            pct = row["pnl_pct"]
-            color = "#FF1744"
-            st.markdown(
-                f'<span style="font-weight:600">{row["tradingsymbol"]}</span> '
-                f'<span style="color:{color};font-weight:600">{pct * 100:+.1f}%</span>',
-                unsafe_allow_html=True,
-            )
-
-else:
-    st.info("Connect Kite or upload a CSV from the sidebar to see your dashboard.")
-
-# ---------------------------------------------------------------------------
-# Quick links
-# ---------------------------------------------------------------------------
-st.divider()
-section_header("Quick Links")
-ql1, ql2, ql3, ql4 = st.columns(4)
-ql1.page_link("pages/1_Portfolio.py", label="Portfolio", icon=":material/account_balance:")
-ql2.page_link("pages/2_Stocks.py", label="Stock Analysis", icon=":material/candlestick_chart:")
-ql3.page_link("pages/3_Mutual_Funds.py", label="Mutual Funds", icon=":material/trending_up:")
-ql4.page_link("pages/4_Signals.py", label="Signals", icon=":material/notifications:")
-ql5, ql6, ql7, ql8 = st.columns(4)
-ql5.page_link("pages/5_Tax.py", label="Tax Calculator", icon=":material/receipt_long:")
-ql6.page_link("pages/6_AI_Advisor.py", label="AI Advisor", icon=":material/smart_toy:")
-ql7.page_link("pages/7_Positions.py", label="Positions & Orders", icon=":material/swap_vert:")
-ql8.page_link("pages/8_Account.py", label="Account", icon=":material/person:")
+pg.run()

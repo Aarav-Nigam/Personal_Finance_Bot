@@ -1,13 +1,13 @@
 import streamlit as st
 
 from config.settings import settings
-from llm.advisor import get_advice_stream
+from llm.advisor import get_advice_stream_with_tools
 from ui.styles import inject_css, section_header
 from ui.theme import COLORS
 
 inject_css()
 
-section_header("AI Portfolio Advisor", icon="robot_face")
+section_header("AI Portfolio Advisor", icon="🤖")
 
 with st.sidebar:
     provider = st.selectbox(
@@ -43,12 +43,12 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 QUICK_QUERIES = [
-    ("Rebalance Portfolio", "Suggest portfolio rebalancing"),
-    ("Sell Recommendations", "Which stocks should I sell?"),
-    ("Sector Exposure", "Analyse my sector exposure"),
-    ("SIP Fund Picks", "Recommend SIP funds for 5 years"),
-    ("XIRR vs Benchmark", "Explain my XIRR vs benchmark"),
-    ("Tax Situation", "What is my tax situation?"),
+    ("Portfolio Review", "Give me an overview of my portfolio performance"),
+    ("Top Holdings", "What are my top holdings and how are they doing?"),
+    ("Sector Exposure", "Analyse my sector exposure and suggest rebalancing"),
+    ("Stock Signal", "What's the buy/sell signal for RELIANCE?"),
+    ("Market Pulse", "What's the current market status?"),
+    ("Latest News", "What's the latest news on my top holdings?"),
 ]
 
 cols = st.columns(3)
@@ -62,9 +62,13 @@ if st.button("Clear conversation", type="secondary"):
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
+        if msg.get("tool_calls"):
+            with st.expander("🔍 Data fetched", expanded=False):
+                for tc in msg["tool_calls"]:
+                    st.caption(f"✓ {tc['display']}")
         st.write(msg["content"])
 
-prompt = st.chat_input("Ask about your portfolio...")
+prompt = st.chat_input("Ask about your portfolio, stocks, or market...")
 
 if hasattr(st.session_state, "quick_query"):
     prompt = st.session_state.quick_query
@@ -76,13 +80,35 @@ if prompt:
         st.write(prompt)
 
     holdings_df = st.session_state.get("holdings_df")
-    history = st.session_state.messages[:-1]
+    llm_history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
 
     with st.chat_message("assistant"):
+        tool_container = st.container()
+        text_container = st.empty()
+        tool_calls_ui = []
+        full_text = ""
+
         try:
-            response = st.write_stream(get_advice_stream(prompt, holdings_df, history))
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            for event in get_advice_stream_with_tools(prompt, holdings_df, llm_history):
+                if event["type"] == "tool_call":
+                    tool_calls_ui.append(event)
+                    with tool_container:
+                        st.caption(f"🔍 {event['display']}")
+
+                elif event["type"] == "text_delta":
+                    full_text += event["content"]
+                    text_container.markdown(full_text + "▌")
+
+                elif event["type"] == "done":
+                    text_container.markdown(event["full_text"])
+                    full_text = event["full_text"]
+
         except Exception as e:
-            error_msg = f"Error: {e}"
-            st.error(error_msg)
-            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+            full_text = f"Error: {e}"
+            text_container.error(full_text)
+
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": full_text,
+            "tool_calls": [{"name": tc["name"], "display": tc["display"]} for tc in tool_calls_ui],
+        })

@@ -6,7 +6,7 @@ from ui.styles import inject_css, metric_card, section_header, status_badge
 
 inject_css()
 
-section_header("Positions & Orders", icon="bar_chart")
+section_header("Positions & Orders", icon="📊")
 
 if not st.session_state.get("kite_connected"):
     st.info("Connect Kite to view positions and orders. Run `python scripts/kite_auth.py`.")
@@ -92,7 +92,7 @@ with tab_pos:
                 st.dataframe(
                     display[cols_to_show],
                     column_config=col_config,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
     except KiteAuthError as e:
@@ -154,7 +154,7 @@ with tab_orders:
             st.dataframe(
                 orders_df[cols_to_show],
                 column_config=col_config,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
     except KiteAuthError as e:

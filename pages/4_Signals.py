@@ -15,7 +15,7 @@ WATCHLIST_PATH = "watchlist.json"
 
 inject_css()
 
-section_header("Signal Screener", icon="bell")
+section_header("Signal Screener", icon="🔔")
 
 
 def _load_watchlist() -> list[str]:
@@ -50,15 +50,9 @@ if not watchlist:
     st.info("Add tickers to your watchlist from the sidebar to see signals.")
     st.stop()
 
-if st.button("Refresh Signals"):
-    from data import cache
-
-    cache.clear()
-    st.rerun()
-
-rows = []
-with st.spinner("Computing signals..."):
-    for sym in watchlist:
+def _compute_all_signals(symbols: list[str]) -> list[dict]:
+    rows = []
+    for sym in symbols:
         signal = compute_signal(sym)
         df = get_ohlcv(sym, period="5d")
         current_price = float(df.iloc[-1]["close"]) if not df.empty and len(df) >= 1 else None
@@ -104,6 +98,25 @@ with st.spinner("Computing signals..."):
                 "reason": signal.reasons[0] if signal.reasons else "—",
             }
         )
+    return rows
+
+
+if st.button("Refresh Signals"):
+    from data import cache
+
+    cache.clear()
+    st.session_state.pop("signal_rows", None)
+    st.session_state.pop("signal_watchlist", None)
+    st.rerun()
+
+cached_wl = st.session_state.get("signal_watchlist")
+if cached_wl != watchlist or "signal_rows" not in st.session_state:
+    with st.spinner("Computing signals..."):
+        rows = _compute_all_signals(watchlist)
+    st.session_state.signal_rows = rows
+    st.session_state.signal_watchlist = list(watchlist)
+else:
+    rows = st.session_state.signal_rows
 
 # ---------------------------------------------------------------------------
 # Summary badges

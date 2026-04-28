@@ -12,7 +12,7 @@ from utils.formatters import fmt_inr
 
 inject_css()
 
-section_header("Stock Analysis", icon="chart_increasing")
+section_header("Stock Analysis", icon="📈")
 
 ticker = st.text_input("Enter NSE ticker (e.g., RELIANCE)").strip().upper()
 if not ticker:
@@ -94,7 +94,7 @@ if show_bb and "bb_upper" in df.columns:
             name="BB Lower",
             line=dict(width=1, dash="dot", color=COLORS["muted"]),
             fill="tonexty",
-            fillcolor="rgba(200,200,200,0.15)",
+            fillcolor="rgba(158,158,158,0.1)",
         ),
         row=1,
         col=1,
@@ -147,7 +147,7 @@ fig.update_yaxes(title_text="RSI", row=2, col=1, range=[0, 100])
 fig.update_yaxes(title_text="MACD", row=3, col=1)
 apply_plotly_defaults(fig)
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -156,7 +156,7 @@ fund = get_fundamentals(ticker)
 left_col, right_col = st.columns(2)
 
 with left_col:
-    section_header("Fundamentals", icon="clipboard")
+    section_header("Fundamentals", icon="📋")
 
     def _fmt_val(val, is_pct=False):
         if val is None:
@@ -180,7 +180,7 @@ with left_col:
         metric_card("Dividend Yield", _fmt_val(fund.get("dividend_yield"), is_pct=True))
 
 with right_col:
-    section_header("52-Week Range", icon="calendar")
+    section_header("52-Week Range", icon="📅")
     high_52 = fund.get("fifty_two_week_high")
     low_52 = fund.get("fifty_two_week_low")
     current_price = float(last["close"])
@@ -206,12 +206,12 @@ with right_col:
 with st.expander("Analyst Recommendations"):
     recs = get_analyst_recs(ticker)
     if not recs.empty:
-        st.dataframe(recs.tail(10), use_container_width=True, hide_index=True)
+        st.dataframe(recs.tail(10), width="stretch", hide_index=True)
     else:
         st.info("No analyst recommendations available.")
 
 st.divider()
-section_header("Signal", icon="bell")
+section_header("Signal", icon="🔔")
 
 with st.spinner("Computing signal..."):
     signal = compute_signal(ticker)
@@ -245,7 +245,7 @@ with st.expander("News & Sentiment"):
 
                 sent_df = pd.DataFrame(sentiments)
                 sent_df.columns = ["Headline", "Sentiment", "Confidence"]
-                st.dataframe(sent_df, use_container_width=True, hide_index=True)
+                st.dataframe(sent_df, width="stretch", hide_index=True)
                 pos = sum(1 for s in sentiments if s["label"] == "positive")
                 st.caption(f"Overall: {pos}/{len(sentiments)} positive headlines")
             else:

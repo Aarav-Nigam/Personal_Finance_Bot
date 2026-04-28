@@ -34,7 +34,10 @@ def get_fund_nav(scheme_code: int) -> pd.DataFrame:
     key = f"mf_nav_{scheme_code}"
     cached = cache.get(key)
     if cached is not None:
-        return pd.DataFrame(cached)
+        df = pd.DataFrame(cached)
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"]).dt.date
+        return df
     try:
         resp = _SESSION.get(f"{BASE_URL}/mf/{scheme_code}", timeout=10)
         resp.raise_for_status()

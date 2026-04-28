@@ -10,6 +10,9 @@ _finbert = None
 def get_sentiment_pipeline():
     global _finbert
     if _finbert is None:
+        import warnings
+
+        warnings.filterwarnings("ignore", message=".*torchvision.*")
         from transformers import pipeline
 
         import os
@@ -28,7 +31,12 @@ def get_news_headlines(symbol: str) -> list[str]:
         news = yf.Ticker(suffix).news
         if not news:
             return []
-        return [item.get("title", "") for item in news[:10] if item.get("title")]
+        titles = []
+        for item in news[:10]:
+            title = item.get("title") or (item.get("content") or {}).get("title")
+            if title:
+                titles.append(title)
+        return titles
     except Exception:
         return []
 

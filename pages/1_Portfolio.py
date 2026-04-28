@@ -17,7 +17,7 @@ from utils.formatters import fmt_inr, fmt_pct
 
 inject_css()
 
-section_header("Portfolio Overview", icon="briefcase")
+section_header("Portfolio Overview", icon="💼")
 
 holdings_df = st.session_state.get("holdings_df")
 
@@ -33,7 +33,7 @@ summary = get_portfolio_summary(holdings_df)
 # ---------------------------------------------------------------------------
 c1, c2, c3, c4, c5 = st.columns(5)
 with c1:
-    metric_card("Total Invested", fmt_inr(summary["total_invested"]), icon="money_bag")
+    metric_card("Total Invested", fmt_inr(summary["total_invested"]), icon="💰")
 with c2:
     metric_card(
         "Current Value",
@@ -48,7 +48,7 @@ with c3:
         delta_value=summary["total_pnl"],
     )
 with c4:
-    metric_card("Holdings", str(summary["num_holdings"]), icon="bar_chart")
+    metric_card("Holdings", str(summary["num_holdings"]), icon="📊")
 with c5:
     xirr_val = None
     try:
@@ -59,7 +59,7 @@ with c5:
     metric_card(
         "XIRR",
         fmt_pct(xirr_val) if xirr_val is not None else "N/A",
-        icon="target",
+        icon="🎯",
     )
 
 st.divider()
@@ -75,7 +75,7 @@ if xirr_val is not None:
         earliest = pd.to_datetime(orders_df["order_timestamp"]).min().date()
         comparison = compare_to_nifty(xirr_val, earliest)
         if comparison:
-            section_header("Performance vs Nifty 50", icon="chart_increasing")
+            section_header("Performance vs Nifty 50", icon="📈")
             nc1, nc2, nc3 = st.columns(3)
             with nc1:
                 metric_card(
@@ -100,7 +100,7 @@ if xirr_val is not None:
 # ---------------------------------------------------------------------------
 # Holdings table
 # ---------------------------------------------------------------------------
-section_header("Holdings", icon="clipboard")
+section_header("Holdings", icon="📋")
 
 display_cols = ["tradingsymbol", "quantity", "average_price", "last_price"]
 display_df = df[display_cols].copy()
@@ -129,14 +129,14 @@ if "day_change" in display_df.columns:
 if "day_chg_pct" in display_df.columns:
     col_config["day_chg_pct"] = st.column_config.NumberColumn("Day %", format="%.2f%%")
 
-st.dataframe(display_df, column_config=col_config, use_container_width=True, hide_index=True)
+st.dataframe(display_df, column_config=col_config, width="stretch", hide_index=True)
 
 st.divider()
 
 # ---------------------------------------------------------------------------
 # Allocation charts
 # ---------------------------------------------------------------------------
-section_header("Allocation", icon="pie_chart")
+section_header("Allocation", icon="🥧")
 left, right = st.columns(2)
 
 with left:
@@ -144,7 +144,7 @@ with left:
     inst_alloc = allocation.get("instrument_type", {})
     if inst_alloc:
         fig = themed_pie(list(inst_alloc.keys()), list(inst_alloc.values()), "By Instrument Type")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("Instrument type data not available.")
 
@@ -153,7 +153,7 @@ with right:
         sector_alloc = get_sector_allocation(holdings_df)
     if sector_alloc:
         fig = themed_pie(list(sector_alloc.keys()), list(sector_alloc.values()), "By Sector")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     else:
         st.info("Sector data not available.")
 
@@ -162,7 +162,7 @@ st.divider()
 # ---------------------------------------------------------------------------
 # Top gainers / losers
 # ---------------------------------------------------------------------------
-section_header("Top Movers", icon="fire")
+section_header("Top Movers", icon="🔥")
 g_col, l_col = st.columns(2)
 
 with g_col:
@@ -174,7 +174,7 @@ with g_col:
             "Top 5 Gainers (%)",
         )
         fig_g.update_layout(yaxis_ticksuffix="%")
-        st.plotly_chart(fig_g, use_container_width=True)
+        st.plotly_chart(fig_g, width="stretch")
 
 with l_col:
     losers = summary["top_losers"]
@@ -185,4 +185,4 @@ with l_col:
             "Top 5 Losers (%)",
         )
         fig_l.update_layout(yaxis_ticksuffix="%")
-        st.plotly_chart(fig_l, use_container_width=True)
+        st.plotly_chart(fig_l, width="stretch")
