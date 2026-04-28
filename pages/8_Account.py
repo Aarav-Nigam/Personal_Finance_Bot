@@ -7,7 +7,7 @@ from ui.styles import inject_css, metric_card, section_header, tag_pills
 
 inject_css()
 
-section_header("Account & Funds", icon="person")
+section_header("Account & Funds", icon="👤")
 
 if not st.session_state.get("kite_connected"):
     st.info("Connect Kite to view account details. Run `python scripts/kite_auth.py`.")
@@ -22,7 +22,7 @@ from utils.formatters import fmt_inr  # noqa: E402
 # ---------------------------------------------------------------------------
 try:
     profile = load_profile()
-    section_header("Profile", icon="bust_in_silhouette")
+    section_header("Profile", icon="👤")
 
     p1, p2, p3 = st.columns(3)
     with p1:
@@ -52,11 +52,11 @@ except Exception as e:
 try:
     margins_summary = get_margin_summary()
 
-    section_header("Funds Overview", icon="money_bag")
+    section_header("Funds Overview", icon="💰")
 
     f1, f2, f3, f4 = st.columns(4)
     with f1:
-        metric_card("Available Cash", fmt_inr(margins_summary["cash"]), icon="money_with_wings")
+        metric_card("Available Cash", fmt_inr(margins_summary["cash"]), icon="💸")
     with f2:
         metric_card("Collateral", fmt_inr(margins_summary["collateral"]))
     with f3:
@@ -69,12 +69,12 @@ try:
     # ---------------------------------------------------------------------------
     # Margin gauge
     # ---------------------------------------------------------------------------
-    section_header("Margin Utilization", icon="speedometer")
+    section_header("Margin Utilization", icon="⏱️")
     g_col, d_col = st.columns([1, 1])
 
     with g_col:
         fig = margin_gauge(margins_summary["total_used"], margins_summary["total_available"])
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
     with d_col:
         metric_card(

@@ -11,7 +11,7 @@
 
 ## What Is This?
 
-PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV export), pulls in live market data from free APIs (yfinance, MFAPI.in, nsepython), and displays everything through a polished multi-page Streamlit dashboard. Eight pages cover your portfolio, individual stock analysis, mutual funds, buy/sell signals, tax calculation, live positions & orders, account/margin details, and an AI chat advisor — all at zero cost.
+PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV export), pulls in live market data from free APIs (yfinance, MFAPI.in, nsepython), and displays everything through a polished dark-themed Streamlit dashboard. Eight pages cover your portfolio, individual stock analysis, mutual funds, buy/sell signals, tax calculation, live positions & orders, account/margin details, and an AI chat advisor with tool-calling — all at zero cost.
 
 ---
 
@@ -44,15 +44,17 @@ PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV
 
 | Category | Highlights |
 |---|---|
-| **Home Dashboard** | Welcome banner, portfolio snapshot (value, day P&L, overall P&L, XIRR), market pulse (Nifty 50 level, market status, available cash), top movers |
+| **Home Dashboard** | Styled hero banner with live/offline status, portfolio snapshot (value, day P&L, overall P&L, XIRR), market pulse (Nifty 50 level, market status, available cash), top movers, quick links |
 | **Portfolio** | Live holdings sync, P&L per stock, day change tracking, XIRR vs Nifty 50 benchmark, sector allocation pie, instrument-type breakdown |
 | **Stock Analysis** | Candlestick chart with EMA/BBands overlays, RSI + MACD subplots, fundamental scorecard, 52-week range, analyst consensus, FinBERT news sentiment |
 | **Mutual Funds** | NAV history chart, SIP XIRR calculator, fund search, category leaderboard (1Y/3Y/5Y), fund comparison overlay |
-| **Signals** | 0-10 scored signal engine, watchlist management, RSI/MACD/EMA200 screener, color-coded badges |
+| **Signals** | 0-10 scored signal engine, watchlist management, RSI/MACD/EMA200 screener, color-coded badges, cached results across tab switches |
 | **Tax Calculator** | LTCG/STCG classification (FY 2023-24 & 2024-25), LTCG exemption, tax-loss harvesting suggestions |
 | **Positions & Orders** | Live open positions with unrealised/realised/M2M P&L, full order book with status filtering |
 | **Account** | Profile details, funds overview (cash, collateral, intraday payin), margin utilization gauge, detailed breakdown |
-| **AI Advisor** | Chat with your portfolio using Gemini, Groq, or Ollama — portfolio context auto-injected, pre-built queries |
+| **AI Advisor** | Chat with your portfolio using Gemini, Groq, or Ollama — LLM fetches data on-demand via 8 tools, tool calls shown live in UI |
+| **Dark Mode** | Full dark theme as default — dark backgrounds, styled cards, Plotly charts, and CSS all tuned for dark mode |
+| **Grouped Navigation** | Sidebar pages organized into sections (Analysis, Tools, Account) with proper labels and icons |
 
 ---
 
@@ -172,7 +174,7 @@ After refreshing the token, start (or restart) the Streamlit app and all Kite-de
 
 ## Setting Up an LLM (AI Advisor)
 
-The AI Advisor page lets you chat about your portfolio with an LLM. You need at least one of these configured. All three are free.
+The AI Advisor page lets you chat about your portfolio with an LLM. The LLM uses tool-calling to fetch only the data it needs on demand (portfolio summary, fundamentals, signals, news, etc.) rather than loading everything upfront. You need at least one provider configured. All three are free.
 
 ### Option 1: Google Gemini (Recommended)
 
@@ -284,7 +286,7 @@ streamlit run app.py
 - **Mutual Funds** — Look up any fund's NAV history, calculate SIP XIRR, compare funds
 - **Signals** — Check your watchlist for buy/sell signals, add/remove tickers
 - **Tax** — Enter trade lots to calculate LTCG/STCG tax, check harvesting opportunities
-- **AI Advisor** — Ask questions about your portfolio in plain English
+- **AI Advisor** — Ask questions about your portfolio in plain English (LLM fetches data via tools)
 - **Positions** — View today's open positions and full order book (Kite required)
 - **Account** — Check available cash, margin utilization, profile details (Kite required)
 
@@ -346,8 +348,8 @@ The parser is flexible — it recognizes common column name variations (`instrum
 ## App Pages Guide
 
 ### Home Dashboard
-The landing page after login. Shows:
-- **Welcome banner** with your name (from Kite profile, or "PersonalFinanceBot" without Kite)
+The landing page. Shows:
+- **Hero banner** with app name, greeting (personalized from Kite profile), and live/offline status indicator
 - **Portfolio snapshot** — 4 cards: total value, day P&L, overall P&L with %, portfolio XIRR
 - **Market pulse** — Nifty 50 level with daily change, market open/closed status, available cash
 - **Top movers** — Your top 3 gainers and top 3 losers for the day
@@ -374,9 +376,9 @@ Search any NSE ticker (e.g., `RELIANCE`, `TCS`, `INFY`):
 
 ### 3. Mutual Funds
 Three tabs:
-- **Fund Search & NAV** — Search any AMFI fund, view NAV chart for 1M to 5Y, fund details
-- **SIP XIRR Calculator** — Enter installment dates + amounts + current value, get true XIRR
-- **Category Leaderboard** — Top 10 funds by returns in any category (Large Cap, ELSS, Flexi Cap, etc.)
+- **Fund Search & NAV** — Search any AMFI fund, view NAV chart for 1M to 5Y, fund details, compare multiple funds by scheme code
+- **SIP XIRR Calculator** — Enter installment dates + amounts + current value, get true XIRR (results cached across tab switches)
+- **Category Leaderboard** — Top 10 funds by returns in any category (Large Cap, ELSS, Flexi Cap, etc.), results persist in session state
 
 ### 4. Signals Dashboard
 Watchlist-based screener:
@@ -384,21 +386,23 @@ Watchlist-based screener:
 - Per-ticker row: price, 1D change, score progress bar, signal badge, RSI (color-coded), top reason
 - **Watchlist management** in sidebar: add/remove tickers (persists to `watchlist.json`)
 - **Refresh button** clears cache and re-computes all signals
+- Signal results cached in session state — survive tab switches without re-fetching
 
 ### 5. Tax Calculator
 Two tabs:
-- **Tax Lots** — Enter each trade (symbol, buy date, sell date, prices, quantity). The app classifies as STCG/LTCG, calculates tax with exemption. STCG vs LTCG donut chart.
+- **Tax Lots** — Enter each trade (symbol, buy date, sell date, prices, quantity). The app classifies as STCG/LTCG, calculates tax with exemption. STCG vs LTCG donut chart. Results cached in session state.
 - **Tax-Loss Harvesting** — Scans your portfolio for unrealised losses that could offset gains. Shows potential tax savings.
 
 Supports FY 2023-24 and FY 2024-25 with different rates.
 
 ### 6. AI Advisor
-Chat interface with:
-- Auto-injected portfolio context (holdings, XIRR, allocation, market data)
+Tool-calling chat interface:
+- **8 tools** the LLM can call on demand: portfolio summary, holdings P&L, allocation (by type or sector), market status, stock fundamentals, stock signal, news headlines, margin summary
+- **Live tool status** — each tool call shows as a status line (e.g., "Fetching fundamentals for RELIANCE...") before the streamed response
 - **Provider dropdown** in sidebar to switch between Gemini / Groq / Ollama
 - **Connection status indicator** (green/red dot)
 - Pre-built query buttons: rebalancing, what to sell, sector exposure, SIP recommendations, XIRR explanation, tax situation
-- Full conversation history for the session
+- Full conversation history for the session with tool call replay in expanders
 
 ### 7. Positions & Orders
 Requires Kite connection. Two tabs:
@@ -510,7 +514,7 @@ If the model ID returns a 404 ("model not found"), Gemini model names change per
 
 ### Signals page is slow
 
-The signal engine calls yfinance for each ticker in your watchlist. With 20+ tickers, the first load takes 30-60 seconds. Subsequent loads are faster thanks to caching (5 min TTL). Keep your watchlist focused on tickers you actually track.
+The signal engine calls yfinance for each ticker in your watchlist. With 20+ tickers, the first load takes 30-60 seconds. Subsequent loads are faster thanks to caching (5 min TTL). Results are also cached in session state, so switching tabs won't trigger a re-fetch. Keep your watchlist focused on tickers you actually track.
 
 ### "Fewer than 250 rows — using EMA50 as EMA200 fallback"
 
@@ -527,6 +531,7 @@ NSE updates its website frequently, breaking the unofficial nsepython scraper. T
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
 │                               Streamlit UI                                       │
+│                        (Dark theme, grouped navigation)                          │
 │                                                                                  │
 │  Home │ Portfolio │ Stocks │ MF │ Signals │ Tax │ AI Advisor │ Positions │ Account│
 └──────────────────────────────────┬───────────────────────────────────────────────┘
@@ -539,9 +544,9 @@ NSE updates its website frequently, breaking the unofficial nsepython scraper. T
     │  portfolio.py      │  │ client.py  │  │  kite_client.py    │
     │  account.py        │  │ advisor.py │  │  market_data.py    │
     │  technicals.py     │  │ prompts.py │  │  mf_client.py      │
-    │  fundamentals.py   │  │ sentiment  │  │  nse_client.py     │
-    │  signals.py        │  └─────┬──────┘  │  cache.py          │
-    │  mf_analytics.py   │        │         └─────────┬──────────┘
+    │  fundamentals.py   │  │ tools.py   │  │  nse_client.py     │
+    │  signals.py        │  │ sentiment  │  │  cache.py          │
+    │  mf_analytics.py   │  └─────┬──────┘  └─────────┬──────────┘
     │  tax.py            │        │                   │
     └────────────────────┘        │                   │
                                   │                   │
@@ -558,7 +563,7 @@ NSE updates its website frequently, breaking the unofficial nsepython scraper. T
     │                                  │    prices, OHLCV, fundamentals │
     │   ┌──────────────────────┐       │                                │
     │   │     ui/              │       │  MFAPI.in (AMFI data)          │
-    │   │  theme.py            │       │    NAV history, fund list      │
+    │   │  theme.py (dark)     │       │    NAV history, fund list      │
     │   │  styles.py           │       │                                │
     │   │  charts.py           │       │  nsepython (NSE scraper)       │
     │   └──────────────────────┘       │    live quotes                 │
@@ -574,19 +579,29 @@ NSE updates its website frequently, breaking the unofficial nsepython scraper. T
 
 Pages (`pages/`) import from `analytics/`, `llm/`, and `utils/` — never directly from `data/`. The `data/` layer handles caching and API calls; `analytics/` provides business logic on top.
 
+### AI Advisor tool-calling flow
+
+```
+User question → LLM receives tools list → LLM calls tools (e.g. get_stock_fundamentals)
+→ Tool executes (calls analytics/data layers) → Result returned to LLM → LLM responds
+```
+
+The LLM can call up to 5 rounds of tools before generating a final text response. Tool calls are displayed live in the UI as status captions.
+
 ---
 
 ## Project Structure
 
 ```
 Personal_Finance_Bot/
-├── app.py                          # Entry point — home dashboard
+├── app.py                          # Entry point — navigation controller + shared setup
+├── home.py                         # Home dashboard (hero banner, portfolio snapshot, market pulse)
 ├── requirements.txt                # Python dependencies
 ├── pyproject.toml                  # Ruff config
 ├── env.template                    # Template for environment variables
 ├── .env                            # Your actual keys (git-ignored)
 ├── .streamlit/
-│   └── config.toml                 # Streamlit theme (blue, white bg, sans-serif)
+│   └── config.toml                 # Streamlit dark theme config
 ├── config/
 │   └── settings.py                 # Reads .env, exposes Settings dataclass
 ├── data/                           # External API wrappers + cache
@@ -604,18 +619,19 @@ Personal_Finance_Bot/
 │   ├── mf_analytics.py             # SIP XIRR, category returns, fund comparison
 │   └── tax.py                      # LTCG/STCG classification + tax computation
 ├── llm/                            # AI features
-│   ├── client.py                   # LiteLLM wrapper (Gemini, Groq, Ollama)
-│   ├── advisor.py                  # Composes portfolio context + chat
-│   ├── prompts.py                  # System prompt templates
+│   ├── client.py                   # LiteLLM wrapper (Gemini, Groq, Ollama) + tool-call streaming
+│   ├── advisor.py                  # Tool-calling advisor loop + legacy fallback
+│   ├── prompts.py                  # System prompt templates + tool instructions
+│   ├── tools.py                    # 8-tool registry (schemas, executor, display names)
 │   └── sentiment.py                # FinBERT news sentiment analysis
-├── ui/                             # Design system
-│   ├── theme.py                    # Color palette, Plotly template
+├── ui/                             # Design system (dark mode)
+│   ├── theme.py                    # Dark color palette, Plotly template
 │   ├── styles.py                   # CSS injection, metric cards, badges
 │   └── charts.py                   # Themed Plotly chart factories
 ├── utils/
 │   ├── calculations.py             # XIRR, CAGR, annualised return
 │   └── formatters.py               # fmt_inr(), fmt_pct(), fmt_cr()
-├── pages/                          # Streamlit pages (auto-detected)
+├── pages/                          # Streamlit pages (loaded via st.navigation)
 │   ├── 1_Portfolio.py
 │   ├── 2_Stocks.py
 │   ├── 3_Mutual_Funds.py
@@ -698,7 +714,7 @@ The tool scans unrealised losses >= ₹500 in your holdings and shows how much t
 1. Create `pages/N_PageName.py` (the number controls sidebar order)
 2. Import from `analytics/`, `llm/`, or `utils/`
 3. Use `ui.styles.inject_css()` for consistent styling
-4. The page auto-appears in the sidebar
+4. Register the page in `app.py` via `st.Page()` inside `st.navigation()`
 
 ### Adding a new LLM provider
 
@@ -706,6 +722,13 @@ LiteLLM supports 100+ providers. To add one:
 1. Set the API key in `.env` and `config/settings.py`
 2. Add the provider to `SUPPORTED_PROVIDERS` in `llm/client.py`
 3. Add the provider name to the dropdown in `pages/6_AI_Advisor.py`
+
+### Adding a new AI Advisor tool
+
+1. Add the tool schema to `TOOL_SCHEMAS` in `llm/tools.py`
+2. Add a display name template to `TOOL_DISPLAY_NAMES`
+3. Add the execution case to `execute_tool()`
+4. If the tool needs `holdings_df`, add its name to `PORTFOLIO_TOOLS`
 
 ---
 

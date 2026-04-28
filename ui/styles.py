@@ -13,7 +13,7 @@ div[data-testid="stMetric"] {
     border-left: 4px solid %(primary)s;
     border-radius: 8px;
     padding: 12px 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 div[data-testid="stMetric"] label {
     font-size: 0.82rem !important;
@@ -56,7 +56,7 @@ section[data-testid="stSidebar"] {
     background: %(card_bg)s;
     border-radius: 10px;
     padding: 16px 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     margin-bottom: 8px;
 }
 .pfb-card-profit { border-left: 4px solid %(profit)s; }

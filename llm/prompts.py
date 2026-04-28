@@ -15,9 +15,29 @@ Key guidelines:
 - Consider NSE/BSE listed securities
 - Suggest diversification across asset classes
 - Be specific with numbers from the portfolio data provided
+- When recent news headlines are provided, reference them in your analysis to give \
+timely, context-aware advice about how current events may impact the user's holdings
 
 Disclaimer: This is not SEBI-registered financial advice. Consult a certified financial \
 planner before making investment decisions.\
+"""
+
+ADVISOR_TOOLS_INSTRUCTION = """\
+
+You have tools to fetch the user's real portfolio data, market data, stock fundamentals, \
+signals, and news headlines. ALWAYS call the appropriate tool(s) before answering questions \
+that need portfolio or market data — do not guess or make up numbers. You can call multiple \
+tools in one turn if needed.
+
+Available tools:
+- get_portfolio_summary: Overall portfolio stats, P&L, top gainers/losers
+- get_holdings_pnl: Per-holding P&L breakdown (optionally filtered by symbol)
+- get_allocation: Portfolio allocation by instrument type or sector
+- get_market_status: Current Nifty 50 level and market open/close status
+- get_stock_fundamentals: PE, PB, ROE, debt/equity, sector etc. for any NSE stock
+- get_stock_signal: Technical + fundamental buy/sell signal (0-10) for any stock
+- get_news: Recent news headlines for any stock
+- get_margin_summary: Available cash, collateral, margin utilization\
 """
 
 
@@ -74,3 +94,29 @@ def build_market_context() -> str:
     except Exception:
         pass
     return ""
+
+
+def build_news_context(holdings_df: pd.DataFrame | None, max_stocks: int = 5) -> str:
+    if holdings_df is None or holdings_df.empty:
+        return ""
+    try:
+        from llm.sentiment import get_news_headlines
+    except Exception:
+        return ""
+
+    top = holdings_df.copy()
+    top["value"] = top["quantity"] * top["last_price"]
+    top = top.nlargest(max_stocks, "value")
+
+    lines = []
+    for _, row in top.iterrows():
+        sym = row["tradingsymbol"]
+        headlines = get_news_headlines(sym)
+        if headlines:
+            lines.append(f"\n{sym}:")
+            for h in headlines[:3]:
+                lines.append(f"  - {h}")
+
+    if not lines:
+        return ""
+    return "Recent news for top holdings:" + "\n".join(lines)

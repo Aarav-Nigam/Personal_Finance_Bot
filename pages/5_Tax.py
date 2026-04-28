@@ -11,7 +11,7 @@ from utils.formatters import fmt_inr
 
 inject_css()
 
-section_header("Tax Calculator", icon="receipt")
+section_header("Tax Calculator", icon="🧾")
 
 fy = st.selectbox("Financial Year", ["2024-25", "2023-24"])
 
@@ -43,7 +43,7 @@ with tab_lots:
             "sell_price": st.column_config.NumberColumn("Sell Price", min_value=0),
         },
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
     )
     st.session_state.tax_lots = edited
 
@@ -67,59 +67,64 @@ with tab_lots:
         else:
             classified = classify_lots(lots, fy)
             summary = compute_tax(classified, fy)
+            st.session_state.tax_classified = classified
+            st.session_state.tax_summary = summary
 
-            st.subheader("Classified Lots")
-            st.dataframe(classified, use_container_width=True, hide_index=True)
+    classified = st.session_state.get("tax_classified")
+    summary = st.session_state.get("tax_summary")
+    if classified is not None and summary is not None:
+        st.subheader("Classified Lots")
+        st.dataframe(classified, width="stretch", hide_index=True)
 
-            st.divider()
-            section_header("Tax Summary", icon="calculator")
+        st.divider()
+        section_header("Tax Summary", icon="🧮")
 
-            c1, c2 = st.columns(2)
-            with c1:
-                metric_card(
-                    "Total STCG",
-                    fmt_inr(summary.total_stcg),
-                    delta_value=summary.total_stcg,
-                )
-                metric_card(
-                    "Total LTCG",
-                    fmt_inr(summary.total_ltcg),
-                    delta_value=summary.total_ltcg,
-                )
-                metric_card("LTCG Taxable", fmt_inr(summary.ltcg_taxable))
-            with c2:
-                metric_card(
-                    "STCG Tax",
-                    fmt_inr(summary.stcg_tax),
-                    delta_value=-summary.stcg_tax if summary.stcg_tax else 0,
-                )
-                metric_card("LTCG Exempt", fmt_inr(summary.ltcg_exempt))
-                metric_card(
-                    "LTCG Tax",
-                    fmt_inr(summary.ltcg_tax),
-                    delta_value=-summary.ltcg_tax if summary.ltcg_tax else 0,
-                )
+        c1, c2 = st.columns(2)
+        with c1:
+            metric_card(
+                "Total STCG",
+                fmt_inr(summary.total_stcg),
+                delta_value=summary.total_stcg,
+            )
+            metric_card(
+                "Total LTCG",
+                fmt_inr(summary.total_ltcg),
+                delta_value=summary.total_ltcg,
+            )
+            metric_card("LTCG Taxable", fmt_inr(summary.ltcg_taxable))
+        with c2:
+            metric_card(
+                "STCG Tax",
+                fmt_inr(summary.stcg_tax),
+                delta_value=-summary.stcg_tax if summary.stcg_tax else 0,
+            )
+            metric_card("LTCG Exempt", fmt_inr(summary.ltcg_exempt))
+            metric_card(
+                "LTCG Tax",
+                fmt_inr(summary.ltcg_tax),
+                delta_value=-summary.ltcg_tax if summary.ltcg_tax else 0,
+            )
 
-            st.divider()
-            tc1, tc2 = st.columns([1, 1])
-            with tc1:
-                metric_card(
-                    "Total Tax Due",
-                    fmt_inr(summary.total_tax),
-                    delta_value=-summary.total_tax if summary.total_tax else 0,
-                    icon="receipt",
+        st.divider()
+        tc1, tc2 = st.columns([1, 1])
+        with tc1:
+            metric_card(
+                "Total Tax Due",
+                fmt_inr(summary.total_tax),
+                delta_value=-summary.total_tax if summary.total_tax else 0,
+                icon="🧾",
+            )
+        with tc2:
+            if summary.total_stcg > 0 or summary.total_ltcg > 0:
+                fig = themed_pie(
+                    ["STCG", "LTCG"],
+                    [abs(summary.total_stcg), abs(summary.total_ltcg)],
+                    "STCG vs LTCG Split",
                 )
-            with tc2:
-                if summary.total_stcg > 0 or summary.total_ltcg > 0:
-                    fig = themed_pie(
-                        ["STCG", "LTCG"],
-                        [abs(summary.total_stcg), abs(summary.total_ltcg)],
-                        "STCG vs LTCG Split",
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
 
 with tab_harvest:
-    section_header("Tax-Loss Harvesting Opportunities", icon="seedling")
+    section_header("Tax-Loss Harvesting Opportunities", icon="🌱")
     holdings_df = st.session_state.get("holdings_df")
     if holdings_df is None or holdings_df.empty:
         st.info("Load your portfolio from the Home page to see harvesting opportunities.")
@@ -149,7 +154,7 @@ with tab_harvest:
                     "Potential Tax Saving",
                     fmt_inr(total_saving),
                     delta_value=1,
-                    icon="money_bag",
+                    icon="💰",
                 )
 
-            st.dataframe(harvest, use_container_width=True, hide_index=True)
+            st.dataframe(harvest, width="stretch", hide_index=True)

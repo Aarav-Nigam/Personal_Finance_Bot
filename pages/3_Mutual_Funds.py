@@ -13,7 +13,7 @@ from utils.formatters import fmt_pct
 
 inject_css()
 
-section_header("Mutual Funds", icon="chart_increasing")
+section_header("Mutual Funds", icon="📈")
 
 tab_search, tab_sip, tab_leaderboard = st.tabs(
     ["Fund Search & NAV", "SIP XIRR Calculator", "Category Leaderboard"]
@@ -67,11 +67,11 @@ with tab_search:
                     )
                     fig.update_traces(
                         line=dict(color=COLORS["primary"], width=2),
-                        fillcolor=f"{COLORS['primary']}18",
+                        fillcolor="rgba(66,165,245,0.15)",
                     )
                     fig.update_layout(xaxis_title="", yaxis_title="NAV (INR)")
                     apply_plotly_defaults(fig)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
                     if details:
                         c1, c2, c3 = st.columns(3)
@@ -94,22 +94,28 @@ with tab_search:
                 with st.spinner("Comparing..."):
                     comp_df = compare_funds(codes)
                 if not comp_df.empty:
+                    plot_df = (
+                        comp_df.reset_index()
+                        .melt(id_vars="date", var_name="scheme_code", value_name="nav")
+                        .dropna(subset=["nav"])
+                        .sort_values("date")
+                    )
                     fig = px.line(
-                        comp_df,
+                        plot_df,
                         x="date",
                         y="nav",
                         color="scheme_code",
                         title="Fund Comparison (Base 100)",
                     )
                     apply_plotly_defaults(fig)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
                 else:
                     st.warning("Could not fetch comparison data.")
             else:
                 st.info("Enter at least 2 scheme codes.")
 
 with tab_sip:
-    section_header("SIP XIRR Calculator", icon="calculator")
+    section_header("SIP XIRR Calculator", icon="🧮")
     st.write("Enter your SIP installments and current investment value.")
 
     if "sip_rows" not in st.session_state:
@@ -124,7 +130,7 @@ with tab_sip:
             "amount": st.column_config.NumberColumn("Amount (INR)", min_value=0),
         },
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
     )
     st.session_state.sip_rows = edited
 
@@ -133,25 +139,39 @@ with tab_sip:
     if st.button("Calculate XIRR"):
         payments = [(row["date"], row["amount"]) for row in edited if row.get("amount")]
         if not payments or current_value <= 0:
-            st.warning("Enter at least one payment and a positive current value.")
+            st.session_state.sip_xirr_result = "warning"
         else:
             result = compute_sip_xirr(payments, current_value)
             if result is not None:
-                st.success(f"SIP XIRR: **{fmt_pct(result)}** annualised")
+                st.session_state.sip_xirr_result = result
             else:
-                st.error("Could not compute XIRR. Check your inputs.")
+                st.session_state.sip_xirr_result = "error"
+
+    xirr_result = st.session_state.get("sip_xirr_result")
+    if xirr_result == "warning":
+        st.warning("Enter at least one payment and a positive current value.")
+    elif xirr_result == "error":
+        st.error("Could not compute XIRR. Check your inputs.")
+    elif xirr_result is not None:
+        st.success(f"SIP XIRR: **{fmt_pct(xirr_result)}** annualised")
 
 with tab_leaderboard:
-    section_header("Category Leaderboard", icon="trophy")
+    section_header("Category Leaderboard", icon="🏆")
     categories = ["Large Cap", "Mid Cap", "Small Cap", "Flexi Cap", "ELSS", "Debt", "Index"]
     category = st.selectbox("Category", categories)
 
     if st.button("Load Leaderboard"):
         with st.spinner(f"Fetching top {category} funds..."):
             lb = get_category_returns(category, top_n=10)
+        st.session_state.mf_leaderboard = lb
+        st.session_state.mf_leaderboard_category = category
+
+    lb = st.session_state.get("mf_leaderboard")
+    if lb is not None:
         if lb.empty:
             st.warning("No funds found for this category.")
         else:
+            st.caption(f"Showing: {st.session_state.get('mf_leaderboard_category', '')}")
             display = lb.copy()
             for col in ["1y_return", "3y_return", "5y_return"]:
                 if col in display.columns:
@@ -159,4 +179,4 @@ with tab_leaderboard:
                         lambda x: fmt_pct(x) if x is not None else "N/A"
                     )
             display.columns = ["Fund Name", "Code", "1Y Return", "3Y Return", "5Y Return"]
-            st.dataframe(display, use_container_width=True, hide_index=True)
+            st.dataframe(display, width="stretch", hide_index=True)

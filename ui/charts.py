@@ -63,9 +63,9 @@ def margin_gauge(used: float, available: float) -> go.Figure:
                 "axis": {"range": [0, 100], "ticksuffix": "%"},
                 "bar": {"color": COLORS["primary"]},
                 "steps": [
-                    {"range": [0, 50], "color": "#E8F5E9"},
-                    {"range": [50, 80], "color": "#FFF3E0"},
-                    {"range": [80, 100], "color": "#FFEBEE"},
+                    {"range": [0, 50], "color": "#1B3A26"},
+                    {"range": [50, 80], "color": "#3A2E1B"},
+                    {"range": [80, 100], "color": "#3A1B1B"},
                 ],
                 "threshold": {
                     "line": {"color": COLORS["loss"], "width": 3},
@@ -93,9 +93,7 @@ def area_line(
             mode="lines",
             fill="tozeroy",
             line=dict(color=line_color, width=2),
-            fillcolor=line_color.replace(")", ",0.1)").replace("rgb", "rgba")
-            if "rgb" in line_color
-            else f"{line_color}18",
+            fillcolor="rgba(66,165,245,0.15)",
         )
     )
     fig.update_layout(title=title)
