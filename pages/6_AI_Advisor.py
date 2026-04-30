@@ -80,7 +80,9 @@ if prompt:
         st.write(prompt)
 
     holdings_df = st.session_state.get("holdings_df")
-    llm_history = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]]
+    llm_history = [
+        {"role": m["role"], "content": m["content"]} for m in st.session_state.messages[:-1]
+    ]
 
     with st.chat_message("assistant"):
         tool_container = st.container()
@@ -107,8 +109,12 @@ if prompt:
             full_text = f"Error: {e}"
             text_container.error(full_text)
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": full_text,
-            "tool_calls": [{"name": tc["name"], "display": tc["display"]} for tc in tool_calls_ui],
-        })
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": full_text,
+                "tool_calls": [
+                    {"name": tc["name"], "display": tc["display"]} for tc in tool_calls_ui
+                ],
+            }
+        )

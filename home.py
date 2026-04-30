@@ -132,9 +132,7 @@ if holdings_df is not None and not holdings_df.empty:
         metric_card(
             "Nifty 50",
             nifty_str,
-            delta=fmt_pct(mkt["nifty_change_pct"])
-            if mkt["nifty_change_pct"] is not None
-            else None,
+            delta=fmt_pct(mkt["nifty_change_pct"]) if mkt["nifty_change_pct"] is not None else None,
             delta_value=mkt["nifty_change_pct"],
         )
     with m2:
@@ -203,8 +201,9 @@ ql1.page_link("pages/1_Portfolio.py", label="Portfolio", icon=":material/account
 ql2.page_link("pages/2_Stocks.py", label="Stock Analysis", icon=":material/candlestick_chart:")
 ql3.page_link("pages/3_Mutual_Funds.py", label="Mutual Funds", icon=":material/trending_up:")
 ql4.page_link("pages/4_Signals.py", label="Signals", icon=":material/notifications:")
-ql5, ql6, ql7, ql8 = st.columns(4)
+ql5, ql6, ql7, ql8, ql9 = st.columns(5)
 ql5.page_link("pages/5_Tax.py", label="Tax Calculator", icon=":material/receipt_long:")
 ql6.page_link("pages/6_AI_Advisor.py", label="AI Advisor", icon=":material/smart_toy:")
 ql7.page_link("pages/7_Positions.py", label="Positions & Orders", icon=":material/swap_vert:")
 ql8.page_link("pages/8_Account.py", label="Account", icon=":material/person:")
+ql9.page_link("pages/9_Risk.py", label="Risk Analysis", icon=":material/shield:")

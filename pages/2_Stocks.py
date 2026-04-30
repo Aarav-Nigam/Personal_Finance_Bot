@@ -6,6 +6,7 @@ from analytics.fundamentals import get_fundamentals
 from analytics.signals import compute_signal
 from analytics.technicals import add_all_indicators
 from data.market_data import get_analyst_recs, get_ohlcv
+from ui.glossary import tip
 from ui.styles import inject_css, metric_card, section_header, signal_badge
 from ui.theme import COLORS, apply_plotly_defaults
 from utils.formatters import fmt_inr
@@ -167,20 +168,20 @@ with left_col:
 
     f1, f2 = st.columns(2)
     with f1:
-        metric_card("P/E (TTM)", _fmt_val(fund.get("pe")))
-        metric_card("EV/EBITDA", _fmt_val(fund.get("ev_ebitda")))
-        metric_card("ROE", _fmt_val(fund.get("roe"), is_pct=True))
-        metric_card("Debt/Equity", _fmt_val(fund.get("debt_equity")))
-        metric_card("Revenue Growth", _fmt_val(fund.get("revenue_growth_yoy"), is_pct=True))
+        metric_card(tip("PE", "P/E (TTM)"), _fmt_val(fund.get("pe")))
+        metric_card(tip("EV/EBITDA"), _fmt_val(fund.get("ev_ebitda")))
+        metric_card(tip("ROE"), _fmt_val(fund.get("roe"), is_pct=True))
+        metric_card(tip("Debt/Equity"), _fmt_val(fund.get("debt_equity")))
+        metric_card(tip("Revenue Growth"), _fmt_val(fund.get("revenue_growth_yoy"), is_pct=True))
     with f2:
-        metric_card("Forward P/E", _fmt_val(fund.get("forward_pe")))
-        metric_card("P/B", _fmt_val(fund.get("pb")))
+        metric_card(tip("Forward PE", "Forward P/E"), _fmt_val(fund.get("forward_pe")))
+        metric_card(tip("PB", "P/B"), _fmt_val(fund.get("pb")))
         metric_card("ROCE", _fmt_val(fund.get("roce"), is_pct=True))
         metric_card("EPS (TTM)", _fmt_val(fund.get("eps_ttm")))
-        metric_card("Dividend Yield", _fmt_val(fund.get("dividend_yield"), is_pct=True))
+        metric_card(tip("Dividend Yield"), _fmt_val(fund.get("dividend_yield"), is_pct=True))
 
 with right_col:
-    section_header("52-Week Range", icon="📅")
+    section_header(tip("52-Week Range") + " ", icon="📅")
     high_52 = fund.get("fifty_two_week_high")
     low_52 = fund.get("fifty_two_week_low")
     current_price = float(last["close"])
@@ -216,18 +217,78 @@ section_header("Signal", icon="🔔")
 with st.spinner("Computing signal..."):
     signal = compute_signal(ticker)
 
-sig_col1, sig_col2 = st.columns([1, 3])
+sig_col1, sig_col2, sig_col3 = st.columns([1, 1, 2])
 with sig_col1:
     metric_card(
-        "Score",
-        f"{signal.score}/10",
-        delta_value=signal.score - 5,
+        tip("Signal Score", "Score"),
+        f"{signal.score:+.1f}",
+        delta_value=signal.score,
     )
 with sig_col2:
     st.markdown(signal_badge(signal.label), unsafe_allow_html=True)
+    st.markdown(
+        f"{tip('Confidence')}: {signal.confidence:.0%}",
+        unsafe_allow_html=True,
+    )
+with sig_col3:
     if signal.reasons:
-        for reason in signal.reasons:
+        for reason in signal.reasons[:5]:
             st.markdown(f"- {reason}")
+
+if signal.sub_scores:
+    from ui.charts import sub_score_bar
+
+    fig = sub_score_bar(signal.sub_scores)
+    st.plotly_chart(fig, width="stretch")
+
+# Actionable targets
+with st.expander("Actionable Targets (Stop-Loss, Price Target, Support/Resistance)"):
+    from analytics.targets import compute_actionable_targets
+
+    portfolio_value = None
+    holdings_df = st.session_state.get("holdings_df")
+    if holdings_df is not None and not holdings_df.empty:
+        portfolio_value = float((holdings_df["last_price"] * holdings_df["quantity"]).sum())
+
+    targets = compute_actionable_targets(ticker, portfolio_value=portfolio_value)
+
+    if targets.get("atr"):
+        t1, t2, t3, t4 = st.columns(4)
+        with t1:
+            metric_card(
+                tip("Stop Loss"),
+                fmt_inr(targets["stop_loss_long"]),
+                icon="🛑",
+            )
+        with t2:
+            target_str = fmt_inr(targets["target_price"]) if targets["target_price"] else "N/A"
+            metric_card("Target Price", target_str, icon="🎯")
+        with t3:
+            metric_card(
+                tip("Support", "Support (S1)"),
+                fmt_inr(targets["support_1"]),
+                icon="🟢",
+            )
+        with t4:
+            metric_card(
+                tip("Resistance", "Resistance (R1)"),
+                fmt_inr(targets["resistance_1"]),
+                icon="🔴",
+            )
+
+        cap_parts = [f"ATR: {targets['atr']:.2f}"]
+        if targets.get("upside_pct") is not None:
+            cap_parts.append(f"Upside: {targets['upside_pct']:+.1f}%")
+        if targets.get("risk_reward_ratio") is not None:
+            cap_parts.append(f"Risk/Reward: {targets['risk_reward_ratio']:.1f}:1")
+        if targets.get("position_size_shares") and targets["position_size_shares"] > 0:
+            cap_parts.append(
+                f"Position size: {targets['position_size_shares']} shares "
+                f"({targets['position_size_pct']:.1f}% of portfolio)"
+            )
+        st.caption(" · ".join(cap_parts))
+    else:
+        st.info("Insufficient price data to compute targets.")
 
 st.divider()
 with st.expander("News & Sentiment"):

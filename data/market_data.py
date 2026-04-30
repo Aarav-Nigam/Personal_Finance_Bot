@@ -59,6 +59,32 @@ def get_fundamentals(symbol: str) -> dict:
         "fifty_two_week_high": info.get("fiftyTwoWeekHigh"),
         "fifty_two_week_low": info.get("fiftyTwoWeekLow"),
         "dividend_yield": info.get("dividendYield"),
+        # Analyst targets & consensus
+        "analyst_target_mean": info.get("targetMeanPrice"),
+        "analyst_target_high": info.get("targetHighPrice"),
+        "analyst_target_low": info.get("targetLowPrice"),
+        "recommendation_key": info.get("recommendationKey"),
+        "num_analyst_opinions": info.get("numberOfAnalystOpinions"),
+        # Risk & volatility
+        "beta": info.get("beta"),
+        # Profitability
+        "profit_margins": info.get("profitMargins"),
+        "operating_margins": info.get("operatingMargins"),
+        "free_cashflow": info.get("freeCashflow"),
+        "operating_cashflow": info.get("operatingCashflow"),
+        # Valuation
+        "peg_ratio": info.get("pegRatio"),
+        # Short interest
+        "short_ratio": info.get("shortRatio"),
+        "short_percent_float": info.get("shortPercentOfFloat"),
+        # Liquidity
+        "current_ratio": info.get("currentRatio"),
+        # Earnings momentum
+        "earnings_growth": info.get("earningsGrowth"),
+        "earnings_quarterly_growth": info.get("earningsQuarterlyGrowth"),
+        # Ownership
+        "held_percent_insiders": info.get("heldPercentInsiders"),
+        "held_percent_institutions": info.get("heldPercentInstitutions"),
     }
     cache.set(key, result, ttl=3600)
     return result

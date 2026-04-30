@@ -37,9 +37,7 @@ def get_advice_stream_with_tools(
     has_portfolio = holdings_df is not None and not holdings_df.empty
     tools = _get_tools(holdings_df)
 
-    messages: list[dict] = [
-        {"role": "system", "content": _build_system_prompt(has_portfolio)}
-    ]
+    messages: list[dict] = [{"role": "system", "content": _build_system_prompt(has_portfolio)}]
     for msg in conversation_history or []:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": user_message})
@@ -85,11 +83,13 @@ def get_advice_stream_with_tools(
                 yield {"type": "tool_call", "name": tc["name"], "display": display}
 
                 result = execute_tool(tc["name"], tc["arguments"], context)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc["id"],
-                    "content": result,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": result,
+                    }
+                )
                 yield {"type": "tool_result", "name": tc["name"]}
 
             continue
@@ -106,6 +106,7 @@ def get_advice_stream_with_tools(
 
 
 # Legacy non-tool versions kept for backward compatibility
+
 
 def _build_messages(
     user_message: str,

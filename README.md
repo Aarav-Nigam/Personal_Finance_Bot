@@ -1,6 +1,6 @@
 # PersonalFinanceBot
 
-> A free, open-source, AI-powered portfolio dashboard for Indian investors — built with Streamlit, Zerodha Kite Connect, and free LLMs.
+> A free, open-source, AI-powered portfolio dashboard for Indian investors — built with Streamlit, Zerodha Kite Connect, and free LLMs. Features a decision engine with risk analytics, actionable targets, rebalancing suggestions, and signal backtesting.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green)
@@ -11,7 +11,7 @@
 
 ## What Is This?
 
-PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV export), pulls in live market data from free APIs (yfinance, MFAPI.in, nsepython), and displays everything through a polished dark-themed Streamlit dashboard. Eight pages cover your portfolio, individual stock analysis, mutual funds, buy/sell signals, tax calculation, live positions & orders, account/margin details, and an AI chat advisor with tool-calling — all at zero cost.
+PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV export), pulls in live market data from free APIs (yfinance, MFAPI.in, nsepython), and displays everything through a polished dark-themed Streamlit dashboard. Nine pages cover your portfolio, individual stock analysis, mutual funds, buy/sell signals, tax calculation, risk analysis, live positions & orders, account/margin details, and an AI chat advisor with 11 tools — all at zero cost.
 
 ---
 
@@ -32,11 +32,12 @@ PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV
 13. [Architecture](#architecture)
 14. [Project Structure](#project-structure)
 15. [Signal Methodology](#signal-methodology)
-16. [Tax Calculator Methodology](#tax-calculator-methodology)
-17. [Extending the Project](#extending-the-project)
-18. [Contributing](#contributing)
-19. [Disclaimer](#disclaimer)
-20. [License](#license)
+16. [Risk Metrics Methodology](#risk-metrics-methodology)
+17. [Tax Calculator Methodology](#tax-calculator-methodology)
+18. [Extending the Project](#extending-the-project)
+19. [Contributing](#contributing)
+20. [Disclaimer](#disclaimer)
+21. [License](#license)
 
 ---
 
@@ -46,13 +47,16 @@ PersonalFinanceBot connects to your Zerodha portfolio via Kite Connect (or a CSV
 |---|---|
 | **Home Dashboard** | Styled hero banner with live/offline status, portfolio snapshot (value, day P&L, overall P&L, XIRR), market pulse (Nifty 50 level, market status, available cash), top movers, quick links |
 | **Portfolio** | Live holdings sync, P&L per stock, day change tracking, XIRR vs Nifty 50 benchmark, sector allocation pie, instrument-type breakdown |
-| **Stock Analysis** | Candlestick chart with EMA/BBands overlays, RSI + MACD subplots, fundamental scorecard, 52-week range, analyst consensus, FinBERT news sentiment |
+| **Stock Analysis** | Candlestick chart with EMA/BBands overlays, RSI + MACD subplots, fundamental scorecard, 52-week range, analyst consensus, actionable targets (stop-loss, price target, S/R levels, position sizing), FinBERT news sentiment |
 | **Mutual Funds** | NAV history chart, SIP XIRR calculator, fund search, category leaderboard (1Y/3Y/5Y), fund comparison overlay |
-| **Signals** | 0-10 scored signal engine, watchlist management, RSI/MACD/EMA200 screener, color-coded badges, cached results across tab switches |
+| **Signals** | -10 to +10 scored signal engine across 6 categories (momentum, trend, volume, fundamentals, sentiment, context), watchlist with actionable targets, portfolio rebalancing suggestions, signal accuracy backtesting |
+| **Risk Analysis** | Portfolio beta, Sharpe ratio, annualized volatility, max drawdown, VaR 95%, concentration alerts (HHI, stock/sector limits), correlation heatmap, Nifty Sharpe comparison |
 | **Tax Calculator** | LTCG/STCG classification (FY 2023-24 & 2024-25), LTCG exemption, tax-loss harvesting suggestions |
 | **Positions & Orders** | Live open positions with unrealised/realised/M2M P&L, full order book with status filtering |
 | **Account** | Profile details, funds overview (cash, collateral, intraday payin), margin utilization gauge, detailed breakdown |
-| **AI Advisor** | Chat with your portfolio using Gemini, Groq, or Ollama — LLM fetches data on-demand via 8 tools, tool calls shown live in UI |
+| **AI Advisor** | Chat with your portfolio using Gemini, Groq, or Ollama — LLM fetches data on-demand via 11 tools (including risk metrics, targets, rebalancing), tool calls shown live in UI |
+| **Rebalancing** | Equal-weight or signal-weighted target allocation, drift detection, specific Add/Trim/Hold actions with share counts |
+| **Backtesting** | Signals auto-stored to SQLite, accuracy tracking per label (avg return, win rate), signal history per stock |
 | **Dark Mode** | Full dark theme as default — dark backgrounds, styled cards, Plotly charts, and CSS all tuned for dark mode |
 | **Grouped Navigation** | Sidebar pages organized into sections (Analysis, Tools, Account) with proper labels and icons |
 
@@ -282,11 +286,12 @@ streamlit run app.py
 
 - **Home page** — Quick glance at portfolio value, day P&L, market status, top movers
 - **Portfolio** — Deep dive into holdings, allocation, P&L breakdown, XIRR vs Nifty
-- **Stocks** — Search any NSE ticker for chart + technicals + fundamentals + signal
+- **Stocks** — Search any NSE ticker for chart + technicals + fundamentals + signal + actionable targets
 - **Mutual Funds** — Look up any fund's NAV history, calculate SIP XIRR, compare funds
-- **Signals** — Check your watchlist for buy/sell signals, add/remove tickers
+- **Signals** — Check your watchlist for buy/sell signals, get rebalance suggestions, track signal accuracy
+- **Risk** — Portfolio-level risk metrics: beta, Sharpe ratio, drawdown, VaR, concentration alerts, correlation heatmap
 - **Tax** — Enter trade lots to calculate LTCG/STCG tax, check harvesting opportunities
-- **AI Advisor** — Ask questions about your portfolio in plain English (LLM fetches data via tools)
+- **AI Advisor** — Ask questions about your portfolio in plain English (LLM fetches data via 11 tools)
 - **Positions** — View today's open positions and full order book (Kite required)
 - **Account** — Check available cash, margin utilization, profile details (Kite required)
 
@@ -334,9 +339,10 @@ The parser is flexible — it recognizes common column name variations (`instrum
 | Feature | Works with CSV? |
 |---|---|
 | Portfolio overview (value, P&L, allocation) | Yes |
-| Stock analysis (chart, technicals, fundamentals) | Yes |
+| Stock analysis (chart, technicals, fundamentals, targets) | Yes |
 | Mutual Funds (NAV, SIP XIRR, leaderboard) | Yes |
-| Signals (watchlist screener) | Yes |
+| Signals (watchlist screener, rebalancing) | Yes |
+| Risk Analysis (beta, Sharpe, drawdown, VaR) | Yes |
 | Tax calculator | Yes |
 | AI Advisor | Yes (uses CSV holdings as context) |
 | Positions & Orders | No (needs live Kite connection) |
@@ -368,8 +374,9 @@ Search any NSE ticker (e.g., `RELIANCE`, `TCS`, `INFY`):
 - **Candlestick chart** with toggleable overlays: EMA 20/50/200, Bollinger Bands
 - **RSI subplot** (14-period) with overbought/oversold zones
 - **MACD subplot** with signal line and histogram
-- **Signal card** — 0-10 score with badge (Strong Buy / Buy / Hold / Sell / Strong Sell)
-- **Fundamentals scorecard** — P/E, forward P/E, EV/EBITDA, P/B, ROE, ROCE, D/E, promoter holding %, EPS, revenue growth
+- **Signal card** — -10 to +10 score with badge (Strong Buy / Buy / Hold / Sell / Strong Sell), sub-score breakdown chart
+- **Actionable targets** — ATR-based stop-loss, analyst price target, pivot support/resistance levels, position sizing (2% risk model), risk/reward ratio
+- **Fundamentals scorecard** — P/E, forward P/E, EV/EBITDA, P/B, ROE, ROCE, D/E, promoter holding %, EPS, revenue growth, PEG, FCF, margins
 - **52-week range** progress bar
 - **Analyst consensus** from Yahoo Finance
 - **News & Sentiment** — Latest 10 headlines with FinBERT sentiment labels (in expander)
@@ -381,11 +388,11 @@ Three tabs:
 - **Category Leaderboard** — Top 10 funds by returns in any category (Large Cap, ELSS, Flexi Cap, etc.), results persist in session state
 
 ### 4. Signals Dashboard
-Watchlist-based screener:
-- **Summary badges** at top: count of Strong Buy / Buy / Hold / Sell / Strong Sell across your watchlist
-- Per-ticker row: price, 1D change, score progress bar, signal badge, RSI (color-coded), top reason
+Three tabs:
+- **Watchlist** — Summary badges at top (count per signal label). Per-ticker expander: price, 1D change, score badge, sub-score chart, plain-English reason explanations, actionable targets (stop-loss, target, support/resistance, position size)
+- **Portfolio Signals** — AI-powered analysis of all holdings with specific recommendations. Rebalancing section: choose equal-weight or signal-weighted strategy, get specific Add/Trim/Hold actions with share counts and reasons
+- **Signal Accuracy** — Backtesting tab showing stored signal history. Per-label accuracy (count, avg return %, win rate). Per-symbol signal history in expanders. Signals auto-stored daily to SQLite for tracking.
 - **Watchlist management** in sidebar: add/remove tickers (persists to `watchlist.json`)
-- **Refresh button** clears cache and re-computes all signals
 - Signal results cached in session state — survive tab switches without re-fetching
 
 ### 5. Tax Calculator
@@ -397,11 +404,12 @@ Supports FY 2023-24 and FY 2024-25 with different rates.
 
 ### 6. AI Advisor
 Tool-calling chat interface:
-- **8 tools** the LLM can call on demand: portfolio summary, holdings P&L, allocation (by type or sector), market status, stock fundamentals, stock signal, news headlines, margin summary
-- **Live tool status** — each tool call shows as a status line (e.g., "Fetching fundamentals for RELIANCE...") before the streamed response
+- **11 tools** the LLM can call on demand: portfolio summary, holdings P&L, allocation (by type or sector), market status, stock fundamentals, stock signal, news headlines, margin summary, **risk metrics**, **actionable targets**, **rebalance suggestions**
+- **Live tool status** — each tool call shows as a status line (e.g., "Analyzing portfolio risk...") before the streamed response
 - **Provider dropdown** in sidebar to switch between Gemini / Groq / Ollama
 - **Connection status indicator** (green/red dot)
 - Pre-built query buttons: rebalancing, what to sell, sector exposure, SIP recommendations, XIRR explanation, tax situation
+- Ask "what are my risk metrics?", "should I rebalance?", "what's the stop-loss for RELIANCE?" — the LLM calls the right tools automatically
 - Full conversation history for the session with tool call replay in expanders
 
 ### 7. Positions & Orders
@@ -415,6 +423,13 @@ Requires Kite connection:
 - **Funds overview** — 4 cards: available cash, collateral, intraday payin, opening balance
 - **Margin utilization gauge** — Visual gauge showing used vs available margin
 - **Detailed breakdown** — Expandable section with all equity margin components
+
+### 9. Risk Analysis
+Portfolio-level risk dashboard (requires holdings):
+- **Key metrics** — 4 cards: Portfolio Beta, Sharpe Ratio, Max Drawdown %, Annualized Volatility
+- **VaR & Nifty comparison** — Daily VaR at 95% confidence, Nifty 50 Sharpe ratio, your Sharpe vs Nifty (outperforming/underperforming)
+- **Concentration alerts** — HHI index, top-3 weight %, warnings if any stock >25% or sector >40%
+- **Correlation heatmap** — Pairwise return correlation matrix with high-correlation pair detection (>0.75)
 
 ---
 
@@ -548,6 +563,10 @@ NSE updates its website frequently, breaking the unofficial nsepython scraper. T
     │  signals.py        │  │ sentiment  │  │  cache.py          │
     │  mf_analytics.py   │  └─────┬──────┘  └─────────┬──────────┘
     │  tax.py            │        │                   │
+    │  risk.py           │        │                   │
+    │  targets.py        │        │                   │
+    │  rebalance.py      │        │                   │
+    │  backtest.py       │        │                   │
     └────────────────────┘        │                   │
                                   │                   │
     ┌─────────────────────────────┘                   │
@@ -586,7 +605,7 @@ User question → LLM receives tools list → LLM calls tools (e.g. get_stock_fu
 → Tool executes (calls analytics/data layers) → Result returned to LLM → LLM responds
 ```
 
-The LLM can call up to 5 rounds of tools before generating a final text response. Tool calls are displayed live in the UI as status captions.
+The LLM can call up to 5 rounds of tools (11 available) before generating a final text response. Tool calls are displayed live in the UI as status captions.
 
 ---
 
@@ -613,21 +632,26 @@ Personal_Finance_Bot/
 ├── analytics/                      # Business logic layer
 │   ├── account.py                  # Margins, profile, positions, orders
 │   ├── portfolio.py                # P&L, XIRR, allocation, Nifty comparison
-│   ├── technicals.py               # EMA, RSI, MACD, BBands via pandas-ta
-│   ├── fundamentals.py             # P/E, ROE, ROCE, etc. aggregation
-│   ├── signals.py                  # 0-10 signal scoring engine
+│   ├── technicals.py               # EMA, RSI, MACD, BBands, ATR, Pivot Points
+│   ├── fundamentals.py             # P/E, ROE, PEG, FCF, margins, etc.
+│   ├── signals.py                  # -10 to +10 signal scoring (6 categories)
+│   ├── targets.py                  # Stop-loss, price targets, position sizing
+│   ├── risk.py                     # Beta, Sharpe, drawdown, VaR, concentration
+│   ├── rebalance.py                # Drift detection, rebalance suggestions
+│   ├── backtest.py                 # Signal storage (SQLite) + accuracy tracking
 │   ├── mf_analytics.py             # SIP XIRR, category returns, fund comparison
 │   └── tax.py                      # LTCG/STCG classification + tax computation
 ├── llm/                            # AI features
 │   ├── client.py                   # LiteLLM wrapper (Gemini, Groq, Ollama) + tool-call streaming
 │   ├── advisor.py                  # Tool-calling advisor loop + legacy fallback
 │   ├── prompts.py                  # System prompt templates + tool instructions
-│   ├── tools.py                    # 8-tool registry (schemas, executor, display names)
+│   ├── tools.py                    # 11-tool registry (schemas, executor, display names)
 │   └── sentiment.py                # FinBERT news sentiment analysis
 ├── ui/                             # Design system (dark mode)
 │   ├── theme.py                    # Dark color palette, Plotly template
 │   ├── styles.py                   # CSS injection, metric cards, badges
-│   └── charts.py                   # Themed Plotly chart factories
+│   ├── charts.py                   # Themed Plotly chart factories
+│   └── glossary.py                 # Tooltip definitions (62 terms) + signal explanations
 ├── utils/
 │   ├── calculations.py             # XIRR, CAGR, annualised return
 │   └── formatters.py               # fmt_inr(), fmt_pct(), fmt_cr()
@@ -639,7 +663,8 @@ Personal_Finance_Bot/
 │   ├── 5_Tax.py
 │   ├── 6_AI_Advisor.py
 │   ├── 7_Positions.py
-│   └── 8_Account.py
+│   ├── 8_Account.py
+│   └── 9_Risk.py
 └── scripts/
     └── kite_auth.py                # Daily Kite OAuth token refresh
 ```
@@ -648,36 +673,94 @@ Personal_Finance_Bot/
 
 ## Signal Methodology
 
-The signal engine (`analytics/signals.py`) scores each stock from 0 to 10. Technical conditions form the base score; fundamentals act as a modifier.
+The signal engine (`analytics/signals.py`) scores each stock from -10 to +10 across 6 weighted categories. Positive = bullish, negative = bearish.
 
-### Technical Score (0-10)
+### Categories & Weights
 
-| Condition | Points |
+| Category | Weight | Data Sources |
+|---|---|---|
+| Momentum | 25% | RSI, MACD, Stochastic, MACD Histogram |
+| Trend | 20% | EMA20/50/200, ADX, Bollinger Bands |
+| Volume | 15% | OBV, MFI, volume spikes |
+| Fundamentals | 20% | P/E, ROE, D/E, PEG, FCF yield, profit margins, earnings growth |
+| Sentiment | 10% | News sentiment (FinBERT), analyst recs, institutional ownership, short interest |
+| Context | 10% | 52-week position, distance from EMA200, analyst price targets, Nifty trend |
+
+### Enriched Fundamental Signals (Phase 2)
+
+| Condition | Score |
 |---|---|
-| RSI (14) < 40 — oversold territory | +2 |
-| MACD line crosses above signal line (last 3 candles) | +2 |
-| Price above EMA 200 — long-term uptrend intact | +2 |
-| Price below EMA 20 — short-term dip in an uptrend | +2 |
-| Price at or below Bollinger lower band (20, 2) | +2 |
-
-### Fundamental Modifier (adjusts score by up to +/-2)
-
-| Condition | Modifier |
-|---|---|
-| P/E < 30 AND ROE > 15% AND D/E < 1 | +2 |
-| P/E > 50 OR D/E > 3 OR EPS declining | -2 |
+| PEG < 1 (undervalued on growth basis) | +2 |
+| PEG > 3 (expensive relative to growth) | -1 |
+| FCF yield > 5% (strong free cash flow) | +1 |
+| FCF < 0 (burning cash) | -1 |
+| Profit margins > 20% (high quality) | +1 |
+| Earnings growth > 20% | +1 |
+| Earnings growth < -10% (declining) | -1 |
+| Institutional ownership > 60% | +1 |
+| Short interest > 10% of float | -2 |
+| Analyst target > 20% above CMP | +3 |
+| Analyst target > 20% below CMP | -3 |
 
 ### Signal Labels
 
-| Score | Label |
+| Score Range | Label |
 |---|---|
-| 9-10 | Strong Buy |
-| 7-8 | Buy |
-| 4-6 | Hold |
-| 2-3 | Sell |
-| 0-1 | Strong Sell |
+| +7 to +10 | Strong Buy |
+| +3 to +6 | Buy |
+| -2 to +2 | Hold |
+| -6 to -3 | Sell |
+| -10 to -7 | Strong Sell |
+
+### Actionable Targets (per stock)
+
+When a signal is computed, the engine also generates:
+- **Stop-loss** — Current price minus 2× ATR(14)
+- **Target price** — Analyst consensus mean target
+- **Support/Resistance** — Classic pivot points (S1, S2, R1, R2)
+- **Position size** — Based on 2% portfolio risk model: `(2% × portfolio) / (entry - stop)`
+- **Risk/reward ratio** — `(target - entry) / (entry - stop)`
+
+### Signal Backtesting
+
+Signals are automatically stored to a local SQLite database (`.cache/signals.db`) each time they're computed. The accuracy tab shows:
+- Per-label performance: count, average return %, win rate (after N days)
+- Per-symbol signal history timeline
+- Data accumulates over time for increasingly reliable accuracy metrics
 
 > These signals are informational tools, not financial advice. Always do your own research.
+
+---
+
+## Risk Metrics Methodology
+
+The Risk Analysis page (`analytics/risk.py`) computes portfolio-level risk metrics from daily returns (1 year of history via yfinance).
+
+| Metric | Formula | Interpretation |
+|---|---|---|
+| **Portfolio Beta** | Weighted average of per-stock betas from fundamentals | >1 = more volatile than market |
+| **Annualized Volatility** | `std(daily returns) × √252` | Lower is more stable |
+| **Sharpe Ratio** | `(annualized return - 6.5%) / annualized volatility` | >1 good, >2 excellent |
+| **Max Drawdown** | Largest peak-to-trough decline in cumulative returns | Worst-case loss experience |
+| **VaR 95%** | 5th percentile of daily portfolio returns | Max daily loss 95% of the time |
+| **HHI** | `Σ(weight²) × 10,000` | <1500 diversified, >2500 concentrated |
+
+### Concentration Alerts
+
+- Single stock > 25% of portfolio → warning
+- Single sector > 40% of portfolio → warning
+- High correlation pairs (>0.75) flagged in heatmap
+
+### Rebalancing Engine
+
+Two strategies available:
+- **Equal weight** — Target 1/N allocation per stock
+- **Signal weighted** — Allocate more to higher-signal stocks (shifted scores normalized to weights)
+
+Drift > 3% triggers a suggestion. Actions combine drift direction with signal direction:
+- Overweight + Sell signal → "Trim X shares"
+- Underweight + Buy signal → "Add X shares"
+- Overweight + Buy signal → "Hold (signal positive)"
 
 ---
 

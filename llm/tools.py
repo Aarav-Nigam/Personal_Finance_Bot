@@ -95,9 +95,10 @@ TOOL_SCHEMAS = [
         "function": {
             "name": "get_stock_signal",
             "description": (
-                "Compute buy/sell/hold signal (0-10 score) for a stock based on "
-                "technical indicators (RSI, MACD, EMA, Bollinger Bands) and "
-                "fundamental modifiers (PE, ROE). Returns score, label, and reasons."
+                "Compute buy/sell/hold signal (-10 to +10 score) for a stock based on "
+                "6 weighted categories: momentum, trend, volume, fundamentals, sentiment, "
+                "and market context. Positive = bullish, negative = bearish. "
+                "Returns score, label, confidence, sub-scores, and reasons."
             ),
             "parameters": {
                 "type": "object",
@@ -143,6 +144,61 @@ TOOL_SCHEMAS = [
             "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_risk_metrics",
+            "description": (
+                "Get portfolio risk metrics: weighted beta, Sharpe ratio, "
+                "annualized volatility, max drawdown, VaR 95%, concentration risk "
+                "(HHI, top-3 weight, alerts), and Nifty Sharpe for comparison."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_actionable_targets",
+            "description": (
+                "Get actionable trading targets for a stock: ATR-based stop-loss, "
+                "analyst price target (mean/high/low), pivot support/resistance levels, "
+                "position size (2% risk model), and risk/reward ratio."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "NSE trading symbol (e.g. 'RELIANCE').",
+                    },
+                },
+                "required": ["symbol"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_rebalance_suggestions",
+            "description": (
+                "Get portfolio rebalancing suggestions: shows drift from target allocation, "
+                "recommends specific Add/Trim/Hold actions with share counts based on "
+                "signals and drift. Strategy: 'equal_weight' or 'signal_weighted'."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "strategy": {
+                        "type": "string",
+                        "enum": ["equal_weight", "signal_weighted"],
+                        "description": "Allocation strategy. Default: signal_weighted.",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 PORTFOLIO_TOOLS = {
@@ -150,6 +206,8 @@ PORTFOLIO_TOOLS = {
     "get_holdings_pnl",
     "get_allocation",
     "get_margin_summary",
+    "get_risk_metrics",
+    "get_rebalance_suggestions",
 }
 
 TOOL_DISPLAY_NAMES = {
@@ -161,6 +219,9 @@ TOOL_DISPLAY_NAMES = {
     "get_stock_signal": "Computing signal for {symbol}",
     "get_news": "Getting news for {symbol}",
     "get_margin_summary": "Checking margin & funds",
+    "get_risk_metrics": "Analyzing portfolio risk",
+    "get_actionable_targets": "Computing targets for {symbol}",
+    "get_rebalance_suggestions": "Generating rebalance plan",
 }
 
 
@@ -202,8 +263,14 @@ def _dispatch(name: str, args: dict, context: dict):
         elif len(df) > 20:
             df = df.nlargest(20, "current_value")
         out_cols = [
-            "tradingsymbol", "quantity", "average_price", "last_price",
-            "invested_value", "current_value", "pnl", "pnl_pct",
+            "tradingsymbol",
+            "quantity",
+            "average_price",
+            "last_price",
+            "invested_value",
+            "current_value",
+            "pnl",
+            "pnl_pct",
         ]
         return df[[c for c in out_cols if c in df.columns]].to_dict(orient="records")
 
@@ -241,5 +308,50 @@ def _dispatch(name: str, args: dict, context: dict):
         from analytics.account import get_margin_summary
 
         return get_margin_summary()
+
+    if name == "get_risk_metrics":
+        from analytics.risk import (
+            compute_portfolio_returns,
+            concentration_risk,
+            max_drawdown,
+            nifty_sharpe,
+            portfolio_beta,
+            portfolio_volatility,
+            sharpe_ratio,
+            var_95,
+        )
+
+        beta = portfolio_beta(holdings_df)
+        returns_df, weights = compute_portfolio_returns(holdings_df)
+        vol = portfolio_volatility(returns_df, weights) if not returns_df.empty else None
+        sharpe_val = sharpe_ratio(returns_df, weights) if not returns_df.empty else None
+        mdd = max_drawdown(returns_df, weights) if not returns_df.empty else None
+        var_val = var_95(returns_df, weights) if not returns_df.empty else None
+        concentration = concentration_risk(holdings_df)
+        nifty_s = nifty_sharpe()
+        return {
+            "portfolio_beta": beta,
+            "annualized_volatility": vol,
+            "sharpe_ratio": sharpe_val,
+            "max_drawdown": mdd,
+            "var_95_pct": var_val,
+            "concentration": concentration,
+            "nifty_sharpe": nifty_s,
+        }
+
+    if name == "get_actionable_targets":
+        from analytics.targets import compute_actionable_targets
+
+        portfolio_value = None
+        if holdings_df is not None and not holdings_df.empty:
+            portfolio_value = float((holdings_df["last_price"] * holdings_df["quantity"]).sum())
+        return compute_actionable_targets(args["symbol"], portfolio_value=portfolio_value)
+
+    if name == "get_rebalance_suggestions":
+        from analytics.rebalance import suggest_rebalance
+
+        strategy = args.get("strategy", "signal_weighted")
+        suggestions = suggest_rebalance(holdings_df, strategy=strategy)
+        return suggestions
 
     return {"error": f"Unknown tool: {name}"}

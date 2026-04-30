@@ -92,6 +92,7 @@ pg = st.navigation(
             st.Page("pages/2_Stocks.py", title="Stock Analysis", icon="📈"),
             st.Page("pages/3_Mutual_Funds.py", title="Mutual Funds", icon="📊"),
             st.Page("pages/4_Signals.py", title="Signals", icon="🔔"),
+            st.Page("pages/9_Risk.py", title="Risk Analysis", icon="🛡️"),
         ],
         "Tools": [
             st.Page("pages/5_Tax.py", title="Tax Calculator", icon="🧾"),
